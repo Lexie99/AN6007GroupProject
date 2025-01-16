@@ -1,0 +1,7 @@
+TypeID,dwelling_type
+1,1-room / 2-room
+2,Private Apartments and Condominiums
+3,Landed Properties
+4,5-room and Executive
+5,3-room
+6,4-room

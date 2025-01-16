@@ -1,0 +1,48 @@
+AreaID;Area;Region
+1001;Bishan;Central Region
+1002;Sembawang;North Region
+1003;Yishun;North Region
+1004;Outram;Central Region
+1005;Kallang;Central Region
+1006;North Region;North Region
+1007;Bukit Batok;West Region
+1008;Sengkang;North East Region
+1009;Clementi;West Region
+1010;Woodlands;North Region
+1011;Choa Chu Kang;West Region
+1012;Serangoon;North East Region
+1013;Central Region;Central Region
+1014;Tampines;East Region
+1015;North East Region;North East Region
+1016;Ang Mo Kio;North East Region
+1017;Toa Payoh;Central Region
+1018;Bedok;East Region
+1019;East Region;East Region
+1020;Jurong East;West Region
+1021;Hougang;North East Region
+1022;Bukit Merah;Central Region
+1023;West Region;West Region
+1024;Queenstown;Central Region
+1025;Geylang;Central Region
+1026;Novena;Central Region
+1027;Jurong West;West Region
+1028;Marine Parade;Central Region
+1029;Rochor;Central Region
+1030;Pioneer;West Region
+1031;Pasir Ris;East Region
+1032;Paya Lebar;East Region
+1033;Mandai;North Region
+1034;Downtown;Central Region
+1035;Seletar;North East Region
+1036;Sungei Kadut;North Region
+1037;Bukit Panjang;West Region
+1038;Museum;Central Region
+1039;Singapore River;Central Region
+1040;Bukit Timah;Central Region
+1041;Changi;East Region
+1042;River Valley;Central Region
+1043;Tanglin;Central Region
+1044;Punggol;North East Region
+1045;Orchard;Central Region
+1046;Southern Islands;Central Region
+1047;Newton;Central Region
