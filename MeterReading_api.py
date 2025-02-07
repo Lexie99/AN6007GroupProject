@@ -3,9 +3,9 @@ from datetime import datetime
 
 # 各电表的元数据信息
 user_dict = {
-    "1": {"area": "Area1", "region": "Region1", "dwelling_type": "Apartment", "username": "user1", "meter_id": "1"},
-    "2": {"area": "Area2", "region": "Region2", "dwelling_type": "House",     "username": "user2", "meter_id": "2"},
-    "3": {"area": "Area3", "region": "Region3", "dwelling_type": "Apartment", "username": "user3", "meter_id": "3"}
+    "1": {"area": "Area1", "region": "Region1", "dwelling_type": "Apartment", "username": "user1", "meter_id": "000000001"},
+    "2": {"area": "Area2", "region": "Region2", "dwelling_type": "House",     "username": "user2", "meter_id": "000000002"},
+    "3": {"area": "Area3", "region": "Region3", "dwelling_type": "Apartment", "username": "user3", "meter_id": "000000003"}
 }
 
 # 用于存储各电表的读数数据
@@ -44,7 +44,7 @@ def receive_reading():
             'reading': reading
         })
 
-        # 输出调试信息
+        # 输出调试信息之后可注释掉
         print(meter_data)
         print("Updated meter_data:")
         for mid, records in meter_data.items():
