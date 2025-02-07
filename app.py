@@ -13,6 +13,10 @@ from Registration_frontend_v2 import register
 
 app = Flask(__name__)
 
+@app.route('/')
+def main():
+    return "Hello, User!"
+
 register(app)
 
 
