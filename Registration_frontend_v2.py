@@ -17,12 +17,43 @@ from flask import Flask, request, jsonify
 
 
 
-# 读取数据文件并解析
-area_file_path = "Area.txt"
-area_data = pd.read_csv(area_file_path, delimiter=';', names=['AreaID', 'Area', 'Region'], skiprows=1)
+# 读取数据
+area_data = pd.DataFrame({
+    "AreaID": [
+        1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010,
+        1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020,
+        1021, 1022, 1023, 1024, 1025, 1026, 1027, 1028, 1029, 1030,
+        1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039, 1040,
+        1041, 1042, 1043, 1044, 1045, 1046, 1047
+    ],
+    "Area": [
+        "Bishan", "Sembawang", "Yishun", "Outram", "Kallang", "North Region", "Bukit Batok", "Sengkang", "Clementi", "Woodlands",
+        "Choa Chu Kang", "Serangoon", "Central Region", "Tampines", "North East Region", "Ang Mo Kio", "Toa Payoh", "Bedok", "East Region", "Jurong East",
+        "Hougang", "Bukit Merah", "West Region", "Queenstown", "Geylang", "Novena", "Jurong West", "Marine Parade", "Rochor", "Pioneer",
+        "Pasir Ris", "Paya Lebar", "Mandai", "Downtown", "Seletar", "Sungei Kadut", "Bukit Panjang", "Museum", "Singapore River", "Bukit Timah",
+        "Changi", "River Valley", "Tanglin", "Punggol", "Orchard", "Southern Islands", "Newton"
+    ],
+    "Region": [
+        "Central Region", "North Region", "North Region", "Central Region", "Central Region", "North Region", "West Region", "North East Region", "West Region", "North Region",
+        "West Region", "North East Region", "Central Region", "East Region", "North East Region", "North East Region", "Central Region", "East Region", "East Region", "West Region",
+        "North East Region", "Central Region", "West Region", "Central Region", "Central Region", "Central Region", "West Region", "Central Region", "Central Region", "West Region",
+        "East Region", "East Region", "North Region", "Central Region", "North East Region", "North Region", "West Region", "Central Region", "Central Region", "Central Region",
+        "East Region", "Central Region", "Central Region", "North East Region", "Central Region", "Central Region", "Central Region"
+    ]
+})
 
-dwelling_file_path = "Dwelling.txt"
-dwelling_data = pd.read_csv(dwelling_file_path, delimiter=',', names=['TypeID', 'DwellingType'], skiprows=1)
+dwelling_data = pd.DataFrame({
+    "TypeID": [1, 2, 3, 4, 5, 6],
+    "DwellingType": [
+        "1-room / 2-room",
+        "Private Apartments and Condominiums",
+        "Landed Properties",
+        "5-room and Executive",
+        "3-room",
+        "4-room"
+    ]
+})
+
 
 # 读取存储的用户数据
 with open("store_user_data.json", "w") as json_file:
@@ -97,13 +128,6 @@ def register(flask_app):
         State('dwelling-type', 'value')
     )
                   
-    
-    
-    
-    
-
-
-
 
     def update_output(n_clicks, meter_id, region, area, dwelling_type):
         global current_id

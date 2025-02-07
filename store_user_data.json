@@ -1,1 +1,16 @@
-{}
+{
+    "1": {
+        "MeterID": "123123123",
+        "Region": "East Region",
+        "Area": "East Region",
+        "DwellingType": "Landed Properties",
+        "TimeStamp": "2025-02-07 17:54:25"
+    },
+    "2": {
+        "MeterID": "123123124",
+        "Region": "North East Region",
+        "Area": "North East Region",
+        "DwellingType": "Private Apartments and Condominiums",
+        "TimeStamp": "2025-02-07 17:54:32"
+    }
+}
