@@ -12,7 +12,7 @@ for i in range(6):
     data = {
         "timestamp": datetime.now().isoformat(),
         "reading": current_reading,
-        "meter_id": "1"
+        "meter_id": "000000001"
     }
     
     # 发送 POST 请求
