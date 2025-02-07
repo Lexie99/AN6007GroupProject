@@ -1,13 +1,30 @@
 import requests
+import time
 from datetime import datetime
 
 url = 'http://127.0.0.1:8000/meter/reading'
-data = {
-    "timestamp": datetime.now().isoformat(),
-    "reading": 150,
-    "meter_id": "1"
-}
 
-response = requests.post(url, json=data)
-print("Status Code:", response.status_code)
-print("Response Text:", response.text)
+current_reading = 200
+
+
+for i in range(6):
+    # 构造数据：使用当前时间和当前读数
+    data = {
+        "timestamp": datetime.now().isoformat(),
+        "reading": current_reading,
+        "meter_id": "1"
+    }
+    
+    # 发送 POST 请求
+    response = requests.post(url, json=data)
+    
+    print(f"Iteration {i+1}:")
+    print("Status Code:", response.status_code)
+    print("Response Text:", response.text)
+    
+    # 更新读数（例如每次增加 5）
+    current_reading += 5
+    
+    # 如果不是最后一次，则等待 30 秒
+    if i < 5:
+        time.sleep(30)
