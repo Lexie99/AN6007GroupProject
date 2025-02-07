@@ -3,9 +3,9 @@ from datetime import datetime
 
 # 各电表的元数据信息
 user_dict = {
-    "1": {"area": "Area1", "region": "Region1", "dwelling_type": "Apartment", "username": "user1", "meter_id": "000000001"},
-    "2": {"area": "Area2", "region": "Region2", "dwelling_type": "House",     "username": "user2", "meter_id": "000000002"},
-    "3": {"area": "Area3", "region": "Region3", "dwelling_type": "Apartment", "username": "user3", "meter_id": "000000003"}
+    "000000001": {"area": "Area1", "region": "Region1", "dwelling_type": "Apartment", "username": "user1", "user_id": "1"},
+    "000000002": {"area": "Area2", "region": "Region2", "dwelling_type": "House",     "username": "user2", "user_id": "2"},
+    "000000003": {"area": "Area3", "region": "Region3", "dwelling_type": "Apartment", "username": "user3", "user_id": "3"}
 }
 
 # 用于存储各电表的读数数据
