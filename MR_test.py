@@ -10,7 +10,7 @@ current_reading = 200
 for i in range(6):
     # 构造数据：使用当前时间和当前读数
     data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now().isoformat(),#不要取当前时间，直接自己设定固定的时间，不然数据写入会很慢
         "reading": current_reading,
         "meter_id": "000000001"
     }
