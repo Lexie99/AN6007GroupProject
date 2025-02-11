@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb  7 18:19:46 2025
+Created on Fri Feb  7 18:32:05 2025
 
 @author: Dell
 """
 
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, State
 import dash_table
 import datetime
 import pandas as pd
 import random
 
 # 初始化 Dash 应用
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, routes_pathname_prefix="/user/query/")
 server = app.server  # 适用于部署
 
 # 生成模拟电表数据，每30分钟记录一次，确保从00:00到23:30
@@ -29,7 +29,7 @@ electricity_data = {
 app.layout = html.Div([
     html.H2("Electricity Usage Query"),
     html.Label("Meter ID:"),
-    dcc.Input(id="meter_id", type="text", placeholder="Enter Meter ID", value="000000001"),
+    dcc.Input(id="meter_id", type="text", placeholder="Enter Meter ID"),
     html.Br(), html.Br(),
     html.Label("Select Time Period:"),
     dcc.Dropdown(
@@ -59,9 +59,8 @@ app.layout = html.Div([
 # 交互回调
 @app.callback(
     [Output("usage_table", "data"), Output("usage_chart", "figure")],
-    Input("get_usage", "n_clicks"),
-    Input("meter_id", "value"),
-    Input("period", "value")
+    [Input("get_usage", "n_clicks")],
+    [State("meter_id", "value"), State("period", "value")]
 )
 def update_table(n_clicks, meter_id, period):
     if not meter_id or meter_id not in electricity_data:
