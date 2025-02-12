@@ -39,8 +39,8 @@ def simulate_meter_readings():
     url = 'http://127.0.0.1:8050/meter/reading'
     
     current_reading = 200
-    # 固定起始时间（例如 2025-02-12 10:00:00）
-    fixed_start_time = datetime(2025, 2, 12, 10, 0, 0)
+    # 固定起始时间（例如 2025-02-10 10:00:00） 可以多次运行不同时间，检验数据是否正确
+    fixed_start_time = datetime(2025, 2, 10, 10, 0, 0)
     
     # 模拟 6 次数据上传
     for i in range(6):
