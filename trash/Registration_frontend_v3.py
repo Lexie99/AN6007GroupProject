@@ -5,8 +5,8 @@ Created on Tue Feb 11 15:26:20 2025
 @author: ASUS
 """
 # Registration_frontend_v2.py
-import dash
-from dash import dcc, html, Input, Output, State
+import dash_app
+from dash_app import dcc, html, Input, Output, State
 import pandas as pd
 import json
 import re
@@ -57,7 +57,7 @@ current_id = max(map(int, store_user_data.keys()), default=0) + 1 if store_user_
 region_area_mapping = area_data.groupby('Region')['Area'].apply(list).to_dict()
 
 def create_registration_app(server):
-    reg_app = dash.Dash(__name__, server=server, url_base_pathname='/register/')
+    reg_app = dash_app.Dash(__name__, server=server, url_base_pathname='/register/')
     reg_app.layout = html.Div([
         html.Div([
             html.H2("New User Registration", style={'textAlign': 'center'}),

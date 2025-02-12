@@ -5,9 +5,9 @@ Created on Tue Feb 11 15:25:43 2025
 @author: ASUS
 """
 # user_query.py
-import dash
-from dash import dcc, html, Input, Output
-from dash import dash_table
+import dash_app
+from dash_app import dcc, html, Input, Output
+from dash_app import dash_table
 import pandas as pd
 from datetime import datetime, timedelta
 import random
@@ -27,7 +27,7 @@ if "000000001" not in meter_data or not meter_data["000000001"]:
         })
 
 def create_user_query_app(server):
-    query_app = dash.Dash(__name__, server=server, url_base_pathname='/query/')
+    query_app = dash_app.Dash(__name__, server=server, url_base_pathname='/query/')
     query_app.layout = html.Div([
         html.H2("Electricity Usage Query"),
         html.Label("Meter ID:"),
