@@ -15,4 +15,5 @@ query_app = create_query_app(app)
 
 if __name__ == '__main__':
     app.run(debug=True, port=8050)
-
+    
+#查看运行结果看  http://127.0.0.1:8050/query/  和   http://127.0.0.1:8050/register/

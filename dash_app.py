@@ -1,10 +1,17 @@
 # dash_app.py
+import os
 import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import requests
 import pandas as pd
 # 从 api.py 导入区域映射数据和住宅数据（这些数据从 JSON 配置中加载）
 from api import region_area_mapping, dwelling_data
+
+# 从环境变量中读取 API 基础 URL，如果未设置则默认使用 http://127.0.0.1:8050
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8050")
+# 定义各接口的 URL
+REGISTER_ENDPOINT = f"{API_BASE_URL}/api/user/register"
+QUERY_ENDPOINT = f"{API_BASE_URL}/api/meter/query"
 
 def create_registration_app(flask_server):
     reg_app = dash.Dash("registration_app", server=flask_server,
@@ -71,7 +78,7 @@ def create_registration_app(flask_server):
                 'dwelling_type': dwelling_type
             }
             try:
-                response = requests.post("http://127.0.0.1:8050/api/user/register", json=payload)
+                response = requests.post(REGISTER_ENDPOINT, json=payload)
                 result = response.json()
                 if result.get('status') == 'success':
                     return html.P(result.get('message'), style={'color': 'green'})
@@ -128,7 +135,7 @@ def create_query_app(flask_server):
             return [], {}
         try:
             params = {'meter_id': meter_id, 'period': period}
-            response = requests.get("http://127.0.0.1:8050/api/meter/query", params=params)
+            response = requests.get(QUERY_ENDPOINT, params=params)
             result = response.json()
             if result.get('status') != 'success':
                 return [], {}
