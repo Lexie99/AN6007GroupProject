@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 from flask import request, jsonify
 import pandas as pd
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- 加载 JSON 配置数据 ---
 with open("config.json", "r", encoding="utf-8") as f:
@@ -39,6 +40,9 @@ if store_user_data:
 else:
     current_id = 0
 
+# 用于控制 API 是否接收请求的全局标志，True 表示正常接收，False 表示维护中（不接受请求）
+acceptAPI = True
+
 # --- 辅助函数 ---
 def get_meter_data(meter_id, start_time):
     """
@@ -57,12 +61,51 @@ def get_meter_data(meter_id, start_time):
             filtered.append(record)
     return filtered
 
+def matainJobs():
+    """
+    将昨日获取的所有 meter reading 数据导出成 CSV 文件。
+    导出的 CSV 文件名格式为 "meter_data_YYYY-MM-DD.csv"（日期为昨日日期）。
+    """
+    # 计算昨日日期（使用当前本地时间）
+    yesterday = (datetime.now() - timedelta(days=1)).date()
+    export_records = []
+    for meter_id, records in meter_data.items():
+        for rec in records:
+            try:
+                dt = datetime.strptime(rec['timestamp'], "%Y-%m-%d %H:%M")
+            except Exception:
+                continue
+            if dt.date() == yesterday:
+                export_records.append({
+                    "meter_id": meter_id,
+                    "timestamp": rec['timestamp'],
+                    "reading": rec['reading']
+                })
+    if export_records:
+        df = pd.DataFrame(export_records)
+        csv_filename = f"meter_data_{yesterday}.csv"
+        df.to_csv(csv_filename, index=False)
+        print(f"Exported {len(export_records)} records to {csv_filename}")
+    else:
+        print("No records found for yesterday.")
+
 # --- 注册 API 路由 ---
 def register_api(app):
+    # 在每个请求前检查是否允许接收请求，如果 acceptAPI 为 False，则返回维护信息
+    @app.before_request
+    def check_accept():
+        if not acceptAPI:
+            return jsonify({
+                "status": "error",
+                "message": "Server is under maintenance. Please try again later."
+            }), 503
+
     # 接收电表读数数据接口
     @app.route('/meter/reading', methods=['POST'])
     def receive_reading():
-        global meter_data, store_user_data
+        global meter_data, store_user_data, acceptAPI
+        if not acceptAPI:
+            return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
         try:
             data = request.get_json()
             meter_id = data.get('meter_id')
@@ -100,7 +143,9 @@ def register_api(app):
     # 用户注册 API 接口
     @app.route('/api/user/register', methods=['POST'])
     def api_register():
-        global current_id, store_user_data
+        global current_id, store_user_data, acceptAPI
+        if not acceptAPI:
+            return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
         try:
             data = request.get_json()
             meter_id = data.get('meter_id')
@@ -164,6 +209,15 @@ def register_api(app):
         data = get_meter_data(meter_id, start_time)
         return jsonify({'status': 'success', 'data': data})
 
+    # 停机维护接口：在调用时暂停接收 API 请求，导出昨日数据，再恢复服务
+    @app.route('/stopserver', methods=['GET'])
+    def stop_server():
+        global acceptAPI
+        acceptAPI = False
+        # 调用 matainJobs 导出昨日数据到 CSV 文件
+        matainJobs()
+        acceptAPI = True
+        return "Server Restarted"
 
-# 导出变量供其他模块使用
+# --- 导出变量供其他模块使用 ---
 __all__ = ["register_api", "region_area_mapping", "dwelling_data"]

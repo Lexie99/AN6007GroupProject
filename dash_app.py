@@ -1,9 +1,9 @@
-# dash_app.py
 import os
 import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import requests
 import pandas as pd
+
 # 从 api.py 导入区域映射数据和住宅数据（这些数据从 JSON 配置中加载）
 from api import region_area_mapping, dwelling_data
 

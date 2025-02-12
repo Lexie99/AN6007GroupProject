@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask
 from api import register_api
 from dash_app import create_registration_app, create_query_app
