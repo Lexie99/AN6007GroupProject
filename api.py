@@ -25,6 +25,25 @@ region_area_mapping = area_data.groupby('Region')['Area'].apply(list).to_dict()
 # --- 全局变量 ---
 # 存储电表读数数据，结构为：{ meter_id: [ { 'timestamp': ..., 'reading': ... }, ... ], ... }
 meter_data = {}
+# --- 加载meter data ---
+METER_DATA_FILE = "meter_data.json"
+
+def load_meter_data():
+    global meter_data
+    try:
+        with open(METER_DATA_FILE, "r", encoding="utf-8") as f:
+            meter_data = json.load(f)
+        print(f"Loaded meter_data from {METER_DATA_FILE}")
+    except (FileNotFoundError, json.JSONDecodeError):
+        meter_data = {}
+        print(f"No existing meter_data found, starting with an empty dictionary.")
+
+def save_meter_data():
+    with open(METER_DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(meter_data, f, indent=4)
+    print(f"Saved meter_data to {METER_DATA_FILE}")
+# 加载历史数据
+load_meter_data()
 
 # 加载或初始化注册用户数据
 try:
@@ -67,6 +86,9 @@ def matainJobs():
     将昨日获取的所有 meter reading 数据导出成 CSV 文件。
     导出的 CSV 文件名格式为 "meter_data_YYYY-MM-DD.csv"（日期为昨日日期）。
     """
+    # 首先加载最新的持久化数据，确保内存数据最新
+    load_meter_data()
+
     # 计算昨日日期（使用当前本地时间）
     yesterday = (datetime.now() - timedelta(days=1)).date()
     export_records = []
@@ -90,7 +112,9 @@ def matainJobs():
     else:
         print("No records found for yesterday.")
     
+    print("Waiting for one minute...")
     time.sleep(60)
+
 
 # --- 注册 API 路由 ---
 def register_api(app):
@@ -107,8 +131,8 @@ def register_api(app):
     @app.route('/meter/reading', methods=['POST'])
     def receive_reading():
         global meter_data, store_user_data, acceptAPI
-        # if not acceptAPI:
-        #     return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
+        if not acceptAPI:
+            return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
         try:
             data = request.get_json()
             meter_id = data.get('meter_id')
@@ -120,19 +144,18 @@ def register_api(app):
             if meter_id not in registered_meter_ids:
                 return jsonify({'status': 'error', 'message': 'MeterID not registered'}), 400
 
-            # 将 ISO 格式的时间戳转换为 "YYYY-MM-DD HH:MM" 格式
             try:
                 timestamp = datetime.fromisoformat(timestamp_str).strftime("%Y-%m-%d %H:%M")
             except Exception as e:
                 return jsonify({'status': 'error', 'message': 'Invalid timestamp format'}), 400
 
-            # 初始化该 meter 的数据列表（如果不存在）
             if meter_id not in meter_data:
                 meter_data[meter_id] = []
-            # 保存本次读数
             meter_data[meter_id].append({'timestamp': timestamp, 'reading': reading})
+            
+            # 调用保存函数，将最新数据持久化到文件
+            save_meter_data()
 
-            # 调试输出
             print("Current meter data:")
             for mid, records in meter_data.items():
                 print(f"Meter {mid}:")
@@ -142,6 +165,7 @@ def register_api(app):
             return jsonify({'status': 'success'})
         except Exception as e:
             return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
     # 用户注册 API 接口
     @app.route('/api/user/register', methods=['POST'])
