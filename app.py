@@ -15,3 +15,4 @@ query_app = create_query_app(app)
 
 if __name__ == '__main__':
     app.run(debug=True, port=8050)
+

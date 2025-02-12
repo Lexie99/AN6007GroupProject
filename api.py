@@ -164,17 +164,6 @@ def register_api(app):
         data = get_meter_data(meter_id, start_time)
         return jsonify({'status': 'success', 'data': data})
 
-# --- 初始化示例数据 ---
-# 如果 "000000001" 的数据为空，则生成当天 48 个数据点（每 30 分钟一个）
-if "000000001" not in meter_data or not meter_data["000000001"]:
-    now = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    meter_data["000000001"] = []
-    for i in range(48):
-        t = now + timedelta(minutes=i * 30)
-        meter_data["000000001"].append({
-            "timestamp": t.strftime("%Y-%m-%d %H:%M"),
-            "reading": random.randint(100, 500)
-        })
 
 # 导出变量供其他模块使用
 __all__ = ["register_api", "region_area_mapping", "dwelling_data"]

@@ -1,16 +1,16 @@
 {
     "1": {
-        "MeterID": "123123123",
-        "Region": "East Region",
-        "Area": "East Region",
-        "DwellingType": "Landed Properties",
-        "TimeStamp": "2025-02-07 17:54:25"
+        "MeterID": "000000001",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-12 23:28:55"
     },
     "2": {
-        "MeterID": "123123124",
-        "Region": "North East Region",
-        "Area": "North East Region",
-        "DwellingType": "Private Apartments and Condominiums",
-        "TimeStamp": "2025-02-07 17:54:32"
+        "MeterID": "000000002",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-12 23:28:58"
     }
 }
