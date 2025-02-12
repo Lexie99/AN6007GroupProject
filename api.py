@@ -2,6 +2,7 @@
 import json
 import random
 import re
+import time
 from datetime import datetime, timedelta
 from flask import request, jsonify
 import pandas as pd
@@ -88,6 +89,8 @@ def matainJobs():
         print(f"Exported {len(export_records)} records to {csv_filename}")
     else:
         print("No records found for yesterday.")
+    
+    time.sleep(60)
 
 # --- 注册 API 路由 ---
 def register_api(app):
@@ -104,8 +107,8 @@ def register_api(app):
     @app.route('/meter/reading', methods=['POST'])
     def receive_reading():
         global meter_data, store_user_data, acceptAPI
-        if not acceptAPI:
-            return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
+        # if not acceptAPI:
+        #     return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
         try:
             data = request.get_json()
             meter_id = data.get('meter_id')
@@ -144,8 +147,8 @@ def register_api(app):
     @app.route('/api/user/register', methods=['POST'])
     def api_register():
         global current_id, store_user_data, acceptAPI
-        if not acceptAPI:
-            return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
+        # if not acceptAPI:
+        #     return jsonify({'status': 'error', 'message': 'Server temporarily not accepting requests.'}), 503
         try:
             data = request.get_json()
             meter_id = data.get('meter_id')
