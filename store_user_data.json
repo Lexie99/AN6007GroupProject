@@ -12,5 +12,12 @@
         "Area": "Outram",
         "DwellingType": "1-room / 2-room",
         "TimeStamp": "2025-02-12 23:28:58"
+    },
+    "4": {
+        "MeterID": "999999999",
+        "Region": "Central Region",
+        "Area": "Bishan",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-12 23:44:41"
     }
 }
