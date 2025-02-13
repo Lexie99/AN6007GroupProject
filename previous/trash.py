@@ -8,7 +8,7 @@ from flask import Flask
 from MeterReading_api import meter_api
 from Registration_frontend_v2 import create_registration_app
 from user_query import create_user_query_app
-from project.dash_app.dash_app import Dash, html, dcc
+from project.dash_app.register import Dash, html, dcc
 
 server = Flask(__name__)
 

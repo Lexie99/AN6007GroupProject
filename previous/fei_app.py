@@ -5,9 +5,9 @@ import json
 import random
 import re
 import pandas as pd
-import project.dash_app.dash_app as dash_app
-from project.dash_app.dash_app import dcc, html, Input, Output, State
-from project.dash_app.dash_app import dash_table
+import project.dash_app.register as register
+from project.dash_app.register import dcc, html, Input, Output, State
+from project.dash_app.register import dash_table
 
 # =============================================================================
 # 1. 全局变量与数据定义
@@ -128,7 +128,7 @@ region_area_mapping = area_data.groupby('Region')['Area'].apply(list).to_dict()
 
 
 def create_registration_app(flask_server):
-    reg_app = dash_app.Dash("registration_app", server=flask_server,
+    reg_app = register.Dash("registration_app", server=flask_server,
                         url_base_pathname='/register/')
     reg_app.layout = html.Div([
         html.Div([
@@ -236,7 +236,7 @@ def get_meter_data(meter_id, start_time):
 
 
 def create_user_query_app(flask_server):
-    query_app = dash_app.Dash("query_app", server=flask_server,
+    query_app = register.Dash("query_app", server=flask_server,
                           url_base_pathname='/query/')
     query_app.layout = html.Div([
         html.H2("Electricity Usage Query"),

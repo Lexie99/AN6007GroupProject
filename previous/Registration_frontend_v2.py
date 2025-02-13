@@ -5,8 +5,8 @@ Created on Thu Feb  6 19:09:46 2025
 @author: Sherlyds
 """
 
-import project.dash_app.dash_app as dash_app
-from project.dash_app.dash_app import dcc, html
+import project.dash_app.register as register
+from project.dash_app.register import dcc, html
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import json
@@ -74,7 +74,7 @@ region_area_mapping = area_data.groupby('Region')['Area'].apply(list).to_dict()
 
 # 定义布局
 def register(flask_app):
-    app = dash_app.Dash(server = flask_app, name = 'register', url_base_pathname='/register/')
+    app = register.Dash(server = flask_app, name = 'register', url_base_pathname='/register/')
     app.layout = html.Div([
         html.Div([
             html.H2("New User Registration", style={'textAlign': 'center'}),

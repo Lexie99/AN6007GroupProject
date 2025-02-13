@@ -5,7 +5,7 @@ import requests
 import pandas as pd
 
 # 从 api.py 导入区域数据和住宅数据（这些数据从 JSON 配置中加载）
-from project.api.api import region_area_mapping, dwelling_data
+from project.api.meter_reading import region_area_mapping, dwelling_data
 
 # 从环境变量中读取 API 基础 URL，如果未设置则默认使用 http://127.0.0.1:8050
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8050")

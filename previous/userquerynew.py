@@ -5,15 +5,15 @@ Created on Fri Feb  7 18:32:05 2025
 @author: Dell
 """
 
-import project.dash_app.dash_app as dash_app
-from project.dash_app.dash_app import dcc, html, Input, Output, State
+import project.dash_app.register as register
+from project.dash_app.register import dcc, html, Input, Output, State
 import dash_table
 import datetime
 import pandas as pd
 import random
 
 # 初始化 Dash 应用
-app = dash_app.Dash(__name__, routes_pathname_prefix="/user/query/")
+app = register.Dash(__name__, routes_pathname_prefix="/user/query/")
 server = app.server  # 适用于部署
 
 # 生成模拟电表数据，每30分钟记录一次，确保从00:00到23:30
