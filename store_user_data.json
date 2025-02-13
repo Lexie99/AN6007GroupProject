@@ -1,0 +1,30 @@
+{
+    "1": {
+        "MeterID": "000000001",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-13 14:39:03"
+    },
+    "2": {
+        "MeterID": "000000002",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-13 14:39:07"
+    },
+    "3": {
+        "MeterID": "000000003",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-13 14:39:11"
+    },
+    "4": {
+        "MeterID": "000000004",
+        "Region": "Central Region",
+        "Area": "Outram",
+        "DwellingType": "1-room / 2-room",
+        "TimeStamp": "2025-02-13 14:39:13"
+    }
+}
