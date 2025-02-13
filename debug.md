@@ -1,6 +1,4 @@
 For api.py：
-done 1. query功能里，meter ID输错没有提示; 现在网页一进去就默认展示00000001数据；点击select time period返回的结果错误，有时候没有变化，不知道是什么原因
-done 2. register功能里，invalid or register meter ID提示后，前面已经填好的内容是不是要清除掉；不知道为啥老跳过3
 3. stop server期间，meter reading出错，这些数据还没想好怎么处理
 4. 将一些功能模块化成Class，规范及简化代码，比如说：
 
@@ -36,20 +34,34 @@ For dash_app.py:
 1. 基础URL可以写进config里，现在这样看起来有点傻
 
 1. To do:
-2. 改requirements.txt/调整结构/加readme.md
+改requirements.txt/调整结构/加readme.md
 
-准备相应的documents：
+2. 准备相应的documents：
 A documentation (or documents) containing:
 a. Job distribution and contribution within group members
 b. The project milestones, the completion status, any issues and recommendations to improvements
 c. API definitions
 d. Batch Jobs features and illustrations
 e. Generative AI consultations Logs:
-i. The need
-ii. The original codes
-iii. The suggested codes from generative AI platform
-iv. The final amendments and adopted codes with learning take-aways
+    i. The need
+    ii. The original codes
+    iii. The suggested codes from generative AI platform
+    iv. The final amendments and adopted codes with learning take-aways
 
+3. 准备pre：
 
-Optional：
-1.增加admin相关功能
+    In your presentation, you are required to demo your solutions and focus on explaining:
+
+    1. how and why, you have selected on the data structure that will support this business case.  
+    2. the choice of visualization  
+    3. how you prepare the test data to ensure your solution is working fine.  
+    4. how you prepare the log to support the solution needed of server restart  
+    5. how you prepare the repetition of monthly electricity consumption for billing  
+
+    You should illustrate that your solution works.
+
+    You also required to share the challenges you encountered and how you overcome the issues.  
+    The duration of the presentation should not be more than 8 - 12 mins per group (or 2 mins per person).  
+    You are advised to adhere to the time limit strictly.
+
+    Please note that if you are not able to complete the entire assignment, you are still required to share your assignment journey as it is graded separately from the final outcome. Each of you are required to take part in the presentation, with appropriate presentation materials or illustrations. You are advised NOT to read out from scripts while presenting.
