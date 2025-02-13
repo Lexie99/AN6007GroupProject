@@ -29,15 +29,26 @@ done 2. register功能里，invalid or register meter ID提示后，前面已经
             - **作用**：将所有配置信息（如从 JSON 文件加载的配置、数据库连接参数、API 地址等）封装到一个类中，并提供统一的访问接口。  
             - **好处**：这样可以在应用启动时统一加载配置，避免在多个模块中重复解析配置文件，同时也方便在不同环境下切换不同的配置。
 
-5. user data和meter data都是存JSON，需要思考一下能不能improve，或者说明为什么选JSON？
+5. user data和meter data要重新思考如何缓存和备份
 
 
 For dash_app.py:
 1. 基础URL可以写进config里，现在这样看起来有点傻
 
-To do:
-改requirements.txt/调整结构/加readme.md
+1. To do:
+2. 改requirements.txt/调整结构/加readme.md
 
+准备相应的documents：
+A documentation (or documents) containing:
+a. Job distribution and contribution within group members
+b. The project milestones, the completion status, any issues and recommendations to improvements
+c. API definitions
+d. Batch Jobs features and illustrations
+e. Generative AI consultations Logs:
+i. The need
+ii. The original codes
+iii. The suggested codes from generative AI platform
+iv. The final amendments and adopted codes with learning take-aways
 
 
 Optional：
