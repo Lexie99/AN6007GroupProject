@@ -22,21 +22,22 @@ def daily_jobs_api(app):
         return jsonify({'status': 'success', 'message': 'Server is in maintenance mode. Background jobs started.'})
 
 def run_maintenance():
-    """
-    服务器维护任务（后台运行，不阻塞 Flask)
-    """
     print("🚧 Server entering maintenance mode...")
-
-    # 计算昨日用电量并备份
-    process_daily_meter_readings()
-
-    # 模拟 1 小时维护
-    print(f"⏳ Maintenance for {MAINTENANCE_DURATION / 60} minutes...")
+    
+    # 开始维护模式，并启动一个线程在维护期间计算和备份电表数据
+    backup_thread = threading.Thread(target=process_daily_meter_readings)
+    backup_thread.start()
+    
+    # 进入维护时段（模拟停机状态1小时）
+    print(f"⏳ Server in maintenance mode for {MAINTENANCE_DURATION / 60} minutes...")
     threading.Event().wait(MAINTENANCE_DURATION)
-
-    # 处理维护期间积压的数据
+    
+    # 确保备份任务已经完成（如果还未结束，则等待其结束）
+    backup_thread.join()
+    
+    # 维护时段结束后，处理维护期间的 pending 数据
     process_pending_data()
-
+    
     print("✅ Server maintenance completed.")
 
 def process_daily_meter_readings():

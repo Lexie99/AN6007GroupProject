@@ -21,7 +21,7 @@ def user_query_api(app):
         if not r.hexists("all_users", meter_id):
             return jsonify({'status': 'error', 'message': 'MeterID not registered'}), 400
 
-        now = datetime.utcnow()
+        now = datetime.now()
 
         # **🔹 查询最近一次读数的 30 分钟增量**
         if period == "30m":

@@ -1,5 +1,4 @@
 For api.py：
-3. stop server期间，meter reading出错，这些数据还没想好怎么处理
 4. 将一些功能模块化成Class，规范及简化代码，比如说：
 
         在一个中等规模的项目中，有几个核心部分特别适合通过类来模块化，这样可以使代码更加清晰、易于维护，并减少重复逻辑：
@@ -27,16 +26,10 @@ For api.py：
             - **作用**：将所有配置信息（如从 JSON 文件加载的配置、数据库连接参数、API 地址等）封装到一个类中，并提供统一的访问接口。  
             - **好处**：这样可以在应用启动时统一加载配置，避免在多个模块中重复解析配置文件，同时也方便在不同环境下切换不同的配置。
 
-5. user data和meter data要重新思考如何缓存和备份
 
+**1. To do:**加readme.md
 
-For dash_app.py:
-1. 基础URL可以写进config里，现在这样看起来有点傻
-
-1. To do:
-改requirements.txt/调整结构/加readme.md
-
-2. 准备相应的documents：
+**2. 准备相应的documents：**
 A documentation (or documents) containing:
 a. Job distribution and contribution within group members
 b. The project milestones, the completion status, any issues and recommendations to improvements
@@ -48,7 +41,7 @@ e. Generative AI consultations Logs:
     iii. The suggested codes from generative AI platform
     iv. The final amendments and adopted codes with learning take-aways
 
-3. 准备pre：
+**3. 准备pre：**
 
     In your presentation, you are required to demo your solutions and focus on explaining:
 
@@ -65,3 +58,7 @@ e. Generative AI consultations Logs:
     You are advised to adhere to the time limit strictly.
 
     Please note that if you are not able to complete the entire assignment, you are still required to share your assignment journey as it is graded separately from the final outcome. Each of you are required to take part in the presentation, with appropriate presentation materials or illustrations. You are advised NOT to read out from scripts while presenting.
+
+**4. possible improvements：**
+    1.目前的日志和备份仅用作记录，暂时没有restore的功能（因为restore的逻辑太复杂了）
+    2.
