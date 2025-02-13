@@ -108,7 +108,7 @@ def create_query_app(flask_server):
     query_app.layout = html.Div([
         html.H2("Electricity Usage Query"),
         html.Label("Meter ID:"),
-        dcc.Input(id="meter_id", type="text", placeholder="Enter Meter ID", value="000000001"),
+        dcc.Input(id="meter_id", type="text", placeholder="Enter 9-digit Meter ID"),
         html.Br(), html.Br(),
         html.Label("Select Time Period:"),
         dcc.Dropdown(
@@ -125,6 +125,7 @@ def create_query_app(flask_server):
         html.Br(),
         html.Button("Get Usage", id="get_usage", n_clicks=0),
         html.Br(), html.Br(),
+        html.Div(id="error_message", style={'color': 'red'}),
         dcc.Graph(id="usage_chart"),
         dash_table.DataTable(id="usage_table",
                              columns=[
@@ -137,26 +138,25 @@ def create_query_app(flask_server):
 
     # 调用 API 进行数据查询
     @query_app.callback(
-        [Output("usage_table", "data"), Output("usage_chart", "figure")],
-        [Input("get_usage", "n_clicks"),
-         Input("meter_id", "value"),
-         Input("period", "value")]
+        [Output("usage_table", "data"), Output("usage_chart", "figure"), Output("error_message", "children")],
+        [Input("get_usage", "n_clicks")],
+        [State("meter_id", "value"), State("period", "value")]
     )
     def update_usage(n_clicks, meter_id, period):
-        if not meter_id:
-            return [], {}
+        if not meter_id or not meter_id.isdigit() or len(meter_id) != 9:
+            return [], {}, "Invalid Meter ID. Please enter a 9-digit number."
         try:
             params = {'meter_id': meter_id, 'period': period}
             response = requests.get(QUERY_ENDPOINT, params=params)
             result = response.json()
             if result.get('status') != 'success':
-                return [], {}
+                return [], {}, "Query failed. Please try again."
             data = result.get('data', [])
         except Exception as e:
-            return [], {}
+            return [], {}, f"Error: {str(e)}"
 
         if not data:
-            return [], {}
+            return [], {}, "No data available for the given Meter ID."
 
         df = pd.DataFrame(data)
         figure = {
@@ -166,6 +166,6 @@ def create_query_app(flask_server):
             ],
             "layout": {"title": "Electricity Usage Over Time"}
         }
-        return data, figure
+        return data, figure, ""
 
     return query_app
