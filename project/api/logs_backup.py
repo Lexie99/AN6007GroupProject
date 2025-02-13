@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-def register_log_backup_api(app):
+def log_backup_api(app):
     """
     注册日志和备份 API
     """
@@ -14,7 +14,7 @@ def register_log_backup_api(app):
     def get_logs():
         """
         获取日志：
-        - log_type: "daily_jobs" / "server_status"（默认 "daily_jobs"）
+        - log_type: "daily_jobs" / "server_status"（默认 "daily_jobs")
         - limit: 指定获取的日志数量（默认 50 条）
         """
         log_type = request.args.get("log_type", "daily_jobs")
@@ -47,7 +47,7 @@ def register_log_backup_api(app):
 
 def log_event(log_type, message):
     """
-    记录日志到 Redis：
+    记录日志到 Redis:
     - log_type: "daily_jobs" / "server_status"
     - message: 记录的日志内容
     """

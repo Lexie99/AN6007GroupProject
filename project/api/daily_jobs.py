@@ -8,7 +8,7 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 KEEP_DAYS = 365  # 只保留 365 天的数据
 MAINTENANCE_DURATION = 3600  # 维护时间（1小时）
 
-def register_daily_jobs(app):
+def daily_jobs_api(app):
     @app.route('/stopserver', methods=['GET'])
     def stop_server():
         """
@@ -23,7 +23,7 @@ def register_daily_jobs(app):
 
 def run_maintenance():
     """
-    服务器维护任务（后台运行，不阻塞 Flask）
+    服务器维护任务（后台运行，不阻塞 Flask)
     """
     print("🚧 Server entering maintenance mode...")
 

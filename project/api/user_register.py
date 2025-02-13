@@ -40,7 +40,7 @@ def load_config():
 load_config()
 
 # **🔹 注册 API**
-def register_user_api(app):
+def user_register_api(app):
     # **获取 `region` 和 `area` 映射**
     @app.route('/api/user/region-area', methods=['GET'])
     def get_region_area():

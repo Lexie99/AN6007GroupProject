@@ -2,7 +2,7 @@ import os
 import dash
 from dash import dcc, html, Input, Output, State
 import requests
-from api.user_management import region_area_mapping, dwelling_data  # 从项目中导入数据
+from api.user_register import region_area_mapping, dwelling_data  # 从项目中导入数据
 
 # 从环境变量中读取 API 基础 URL，如果未设置则默认使用 http://127.0.0.1:8050
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8050")
@@ -11,13 +11,14 @@ REGISTER_ENDPOINT = f"{API_BASE_URL}/api/user/register"
 def create_registration_app(flask_server):
     reg_app = dash.Dash("registration_app", server=flask_server, url_base_pathname='/register/')
 
-    # **🔹 更新 Layout**
+    # **Layout**
     reg_app.layout = html.Div([
         html.Div([
             html.H2("New User Registration", style={'textAlign': 'center'}),
 
             html.Label("MeterID:"),
-            dcc.Input(id='meter-id', type='text', placeholder='Enter 9 digits MeterID', style={'width': '100%'}),
+            dcc.Input(id='meter-id', type='text', placeholder='Enter 9 digits MeterID', style={'width': '99%',"height":"30px"}),
+            html.Br(),
             html.Br(),
 
             html.Label("Region:"),

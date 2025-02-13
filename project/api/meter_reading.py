@@ -5,7 +5,7 @@ from datetime import datetime
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-def register_meter_api(app):
+def meter_reading_api(app):
     @app.route('/meter/reading', methods=['POST'])
     def receive_reading():
         """
