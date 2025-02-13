@@ -4,7 +4,7 @@ from dash import dcc, html, Input, Output, State, dash_table
 import requests
 import pandas as pd
 
-# 从 api.py 导入区域映射数据和住宅数据（这些数据从 JSON 配置中加载）
+# 从 api.py 导入区域数据和住宅数据（这些数据从 JSON 配置中加载）
 from api import region_area_mapping, dwelling_data
 
 # 从环境变量中读取 API 基础 URL，如果未设置则默认使用 http://127.0.0.1:8050
@@ -80,6 +80,18 @@ def create_registration_app(flask_server):
             try:
                 response = requests.post(REGISTER_ENDPOINT, json=payload)
                 result = response.json()
+                #**Step 1: 过滤成功的注册数据**
+                valid_entries = {
+                    int(k): v for k, v in result.items()
+                    if isinstance(v, dict) and v.get("MeterID")  # 确保 `MeterID` 存在
+            }
+
+                # **Step 2: 按 `1, 2, 3, 4` 顺序排序**
+                sorted_entries = {str(k): valid_entries[k] for k in sorted(valid_entries)}
+
+                # **Step 3: 提取 `message` 并显示**
+                success_message = "\n".join([f"Registered {v['MeterID']} in {v['Area']} ({v['TimeStamp']})" for v in sorted_entries.values()])
+            
                 if result.get('status') == 'success':
                     return html.P(result.get('message'), style={'color': 'green'})
                 else:
