@@ -5,9 +5,9 @@ Created on Tue Feb 11 15:25:43 2025
 @author: ASUS
 """
 # user_query.py
-import dash_app
-from dash_app import dcc, html, Input, Output
-from dash_app import dash_table
+import project.dash_app.dash_app as dash_app
+from project.dash_app.dash_app import dcc, html, Input, Output
+from project.dash_app.dash_app import dash_table
 import pandas as pd
 from datetime import datetime, timedelta
 import random

@@ -5,8 +5,8 @@ Created on Fri Feb  7 18:32:05 2025
 @author: Dell
 """
 
-import dash_app
-from dash_app import dcc, html, Input, Output, State
+import project.dash_app.dash_app as dash_app
+from project.dash_app.dash_app import dcc, html, Input, Output, State
 import dash_table
 import datetime
 import pandas as pd

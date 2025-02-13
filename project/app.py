@@ -1,6 +1,6 @@
 from flask import Flask
-from api import register_api
-from dash_app import create_registration_app, create_query_app
+from project.api.api import register_api
+from project.dash_app.dash_app import create_registration_app, create_query_app
 
 # 创建 Flask 应用实例
 app = Flask(__name__)

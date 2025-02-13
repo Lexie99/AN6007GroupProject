@@ -5,9 +5,9 @@ import json
 import random
 import re
 import pandas as pd
-import dash_app
-from dash_app import dcc, html, Input, Output, State
-from dash_app import dash_table
+import project.dash_app.dash_app as dash_app
+from project.dash_app.dash_app import dcc, html, Input, Output, State
+from project.dash_app.dash_app import dash_table
 
 # =============================================================================
 # 1. 全局变量与数据定义

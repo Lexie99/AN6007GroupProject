@@ -5,8 +5,8 @@ Created on Thu Feb  6 19:09:46 2025
 @author: Sherlyds
 """
 
-import dash_app
-from dash_app import dcc, html
+import project.dash_app.dash_app as dash_app
+from project.dash_app.dash_app import dcc, html
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import json

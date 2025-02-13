@@ -5,8 +5,8 @@ Created on Tue Feb 11 15:26:20 2025
 @author: ASUS
 """
 # Registration_frontend_v2.py
-import dash_app
-from dash_app import dcc, html, Input, Output, State
+import project.dash_app.dash_app as dash_app
+from project.dash_app.dash_app import dcc, html, Input, Output, State
 import pandas as pd
 import json
 import re
