@@ -49,7 +49,7 @@ def simulate_meter_readings():
         data = {
             "timestamp": timestamp,
             "reading": current_reading,
-            "meter_id": "123123123"
+            "meter_id": "000000001"
         }
         
         try:
