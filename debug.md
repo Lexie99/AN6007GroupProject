@@ -1,6 +1,7 @@
 **1. To do:**
     加readme.md
     封装类
+    测试
     
 
 **2. 准备相应的documents：**

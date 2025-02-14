@@ -1,65 +1,30 @@
-import redis
-import json
-from flask import request, jsonify
+# api/logs_backup.py
+
+from flask import request, jsonify, Blueprint
 from datetime import datetime, timedelta
-import os
 
-redis_host = os.getenv('REDIS_HOST', 'localhost')
-redis_port = int(os.getenv('REDIS_PORT', 6379))
-r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+def create_logs_backup_blueprint(redis_service):
+    bp = Blueprint('logs_backup', __name__)
 
-def log_backup_api(app):
-    """
-    注册日志和备份 API
-    """
-
-    @app.route('/get_logs', methods=['GET'])
+    @bp.route('/get_logs', methods=['GET'])
     def get_logs():
-        """
-        获取日志：
-        - log_type: "daily_jobs" / "server_status"（默认 "daily_jobs")
-        - limit: 指定获取的日志数量（默认 50 条）
-        """
-        log_type = request.args.get("log_type", "daily_jobs")
-        limit = int(request.args.get("limit", 50))  # 默认获取最近 50 条日志
-
-        logs = r.lrange(f"logs:{log_type}", -limit, -1)
+        log_type = request.args.get('log_type', 'daily_jobs')
+        limit = int(request.args.get('limit', 50))
+        logs = redis_service.get_logs(log_type, limit)
         return jsonify({"log_type": log_type, "logs": logs})
 
-    @app.route('/get_backup', methods=['GET'])
+    @bp.route('/get_backup', methods=['GET'])
     def get_backup():
-        """
-        获取指定日期的电表备份数据：
-        - 如果不提供 `date` 参数，默认获取昨天的备份数据。
-        - 返回数据格式为 JSON 解析后的电表数据。
-        """
-        date = request.args.get("date")
-        if not date:
-            date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        date_str = request.args.get("date")
+        if not date_str:
+            y = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            date_str = y
+        
+        backup_key = f"backup:meter_data:{date_str}"
+        bdata = redis_service.client.hgetall(backup_key)
+        if not bdata:
+            return jsonify({"status":"error","message":f"No backup data for {date_str}"}), 404
+        
+        return jsonify({"status":"success","date":date_str,"backup_data":bdata})
 
-        backup_key = f"backup:meter_data:{date}"
-        backup_data = r.hgetall(backup_key)
-
-        if not backup_data:
-            return jsonify({"status": "error", "message": f"No backup data found for {date}"}), 404
-
-        # 解析 JSON 使数据格式更友好
-        parsed_backup = {meter_id: json.loads(data) for meter_id, data in backup_data.items()}
-
-        return jsonify({"status": "success", "date": date, "backup_data": parsed_backup})
-
-def log_event(log_type, message):
-    """
-    记录日志到 Redis:
-    - log_type: "daily_jobs" / "server_status"
-    - message: 记录的日志内容
-    """
-    timestamp = datetime.now().isoformat()
-    log_entry = f"{timestamp} - {message}"
-    
-    # 存入 Redis List（最多保留 1000 条，避免占用太多内存）
-    log_key = f"logs:{log_type}"
-    r.rpush(log_key, log_entry)
-    r.ltrim(log_key, -1000, -1)
-
-    print(f"📝 Log [{log_type}]: {message}")
+    return bp

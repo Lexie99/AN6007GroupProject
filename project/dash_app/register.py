@@ -1,34 +1,48 @@
+# dash/dash_register.py
+
 import os
 import dash
 from dash import dcc, html, Input, Output, State
+from config.app_config import AppConfig   # 直接导入你的 AppConfig
+import sys
 import requests
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8050")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8050")
 REGISTER_ENDPOINT = f"{API_BASE_URL}/api/user/register"
-REGION_AREA_ENDPOINT = f"{API_BASE_URL}/api/user/region-area"
-DWELLING_ENDPOINT = f"{API_BASE_URL}/api/user/dwelling-types"
 
 def create_registration_app(flask_server):
     reg_app = dash.Dash("registration_app", server=flask_server, url_base_pathname='/register/')
 
-    # 初始空，稍后在回调或layout加载时获取
+    # 1) 在进程启动时就加载 config，拿到 region->area、dwelling
+    app_config = AppConfig()
+    region_area_data = app_config.region_area_mapping  # dict[region] = set(area)
+    dwelling_set = app_config.dwelling_type_set        # set of dwelling strings
+
+    # 构造 region dropdown初始选项
+    region_options = [{'label': r, 'value': r} for r in sorted(region_area_data.keys())]
+    # dwelling dropdown初始选项
+    dwelling_options = [{'label': d, 'value': d} for d in sorted(dwelling_set)]
+
+    # 2) Dash Layout
     reg_app.layout = html.Div([
         html.H2("New User Registration", style={'textAlign': 'center'}),
 
-        html.Label("MeterID:"),
-        dcc.Input(id='meter-id', type='text', placeholder='Enter 9 digits MeterID', style={'width': '99%',"height":"30px"}),
+        html.Label("Meter ID:"),
+        dcc.Input(id='meter-id', type='text', placeholder='Enter 9 digits MeterID',
+                  style={'width': '99%', "height": "30px"}),
         html.Br(), html.Br(),
 
         html.Label("Region:"),
-        dcc.Dropdown(id='region', placeholder='Select a Region', style={'width': '100%'}),
+        dcc.Dropdown(id='region', options=region_options, placeholder='Select a Region', style={'width': '100%'}),
         html.Br(),
 
         html.Label("Area:"),
-        dcc.Dropdown(id='area', placeholder='Select an Area', disabled=True, style={'width': '100%'}),
+        dcc.Dropdown(id='area', options=[], placeholder='Select an Area', disabled=True, style={'width': '100%'}),
         html.Br(),
 
         html.Label("Dwelling Type:"),
-        dcc.Dropdown(id='dwelling-type', placeholder='Select a Dwelling Type', style={'width': '100%'}),
+        dcc.Dropdown(id='dwelling-type', options=dwelling_options, placeholder='Select a Dwelling Type',
+                     style={'width': '100%'}),
         html.Br(),
 
         html.Button("Submit", id='submit-btn', n_clicks=0,
@@ -45,58 +59,23 @@ def create_registration_app(flask_server):
         'boxShadow': '2px 2px 10px rgba(0,0,0,0.1)'
     })
 
-    # **🔹 启动时加载 region/area & dwelling-type 选项 (用一个回调 or layout load)**
+    # 3) 动态更新 area dropdown: 当 region 改变时
     @reg_app.callback(
-        [Output('region', 'options'),
-         Output('dwelling-type', 'options')],
-        [Input('region', 'id')]  # 一个dummy触发，也可用 dash.no_update
-    )
-    def load_options(_):
-        """
-        第一次布局加载时被调用。可以用更优的方式防止重复加载。
-        """
-        try:
-            # 获取 region_area 数据
-            resp1 = requests.get(REGION_AREA_ENDPOINT)
-            region_area_data = resp1.json() if resp1.status_code == 200 else {}
-
-            # region_area_data 形如 {"North Region": ["Sembawang", "Yishun"], ...}
-            region_options = [{"label": reg, "value": reg} for reg in sorted(region_area_data.keys())]
-
-            # 获取 dwelling_types
-            resp2 = requests.get(DWELLING_ENDPOINT)
-            dwellings = resp2.json() if resp2.status_code == 200 else []
-            dwelling_options = [{"label": d, "value": d} for d in sorted(dwellings)]
-
-            return region_options, dwelling_options
-        except Exception:
-            return [], []
-
-    # **🔹 动态更新 area 选项**
-    @reg_app.callback(
-        Output('area', 'options'),
-        Output('area', 'disabled'),
-        Input('region', 'value')
+        [Output('area', 'options'), Output('area', 'disabled')],
+        [Input('region', 'value')]
     )
     def update_area_options(selected_region):
-        try:
-            if not selected_region:
-                return [], True
-            # 再次向后端拿当前region对应的areas
-            # 也可在前面 load_options 回调里保存 region_area_data 到 dcc.Store
-            # 这里为简单起见再次请求
-            resp = requests.get(REGION_AREA_ENDPOINT)
-            region_area_data = resp.json() if resp.status_code == 200 else {}
-
-            if selected_region not in region_area_data:
-                return [], True
-            area_list = region_area_data[selected_region]
-            area_opts = [{'label': a, 'value': a} for a in sorted(area_list)]
-            return area_opts, False
-        except Exception:
+        if not selected_region:
             return [], True
 
-    # **🔹 提交注册**
+        # 直接从 region_area_data 获取
+        if selected_region not in region_area_data:
+            return [], True
+
+        area_list = sorted(region_area_data[selected_region])
+        area_opts = [{'label': a, 'value': a} for a in area_list]
+        return area_opts, False
+
     @reg_app.callback(
         Output('output', 'children'),
         [Input('submit-btn', 'n_clicks')],
@@ -106,7 +85,9 @@ def create_registration_app(flask_server):
          State('dwelling-type', 'value')]
     )
     def register_user(n_clicks, meter_id, region, area, dwelling_type):
-        if n_clicks > 0:
+        if n_clicks>0:
+            if not meter_id or not region or not area or not dwelling_type:
+                return "Please fill in all fields."
             payload = {
                 'meter_id': meter_id,
                 'region': region,
@@ -114,14 +95,14 @@ def create_registration_app(flask_server):
                 'dwelling_type': dwelling_type
             }
             try:
-                response = requests.post(REGISTER_ENDPOINT, json=payload)
-                result = response.json()
-                if result.get('status') == 'success':
-                    return html.P(result.get('message'), style={'color': 'green'})
+                resp = requests.post(REGISTER_ENDPOINT, json=payload)
+                data = resp.json()
+                if data.get('status')=='success':
+                    return html.P(data.get('message'), style={'color':'green'})
                 else:
-                    return html.P(result.get('message'), style={'color': 'red'})
+                    return html.P(data.get('message'), style={'color':'red'})
             except Exception as e:
-                return html.P(f"Error: {str(e)}", style={'color': 'red'})
+                return html.P(f"Error: {str(e)}", style={'color':'red'})
         return ""
 
     return reg_app

@@ -1,27 +1,48 @@
+# app.py
+
 from flask import Flask
-from api import daily_jobs_api, log_backup_api, meter_reading_api,user_query_api,user_register_api
-from dash_app import create_registration_app, create_query_app
-from background_worker import start_background_worker
+from config.app_config import AppConfig
+from services.redis_service import RedisService
+from services.background_worker import start_background_worker
 
+# 导入所有 create_xxx_blueprint 函数
+from api.user_register import create_user_register_blueprint
+from api.meter_reading import create_meter_reading_blueprint
+from api.user_query import create_user_query_blueprint
+from api.daily_jobs import create_daily_jobs_blueprint
+from api.logs_backup import create_logs_backup_blueprint
 
-app = Flask(__name__)
+# Dash front-end
+from dash_app.query import create_query_app
+from dash_app.register import create_registration_app
 
-# 注册 API
-daily_jobs_api(app)
-log_backup_api(app)
-meter_reading_api(app)
-user_query_api(app)
-user_register_api(app)
+def create_app():
+    app = Flask(__name__)
 
-# 绑定 Dash 页面
-create_registration_app(app)
-create_query_app(app)
+    # 初始化配置与 RedisService
+    app_config = AppConfig()
+    redis_service = RedisService()
 
-# 启动后台任务
-start_background_worker()
+    # 注册API路由
+    app.register_blueprint(create_user_register_blueprint(app_config, redis_service))
+    app.register_blueprint(create_meter_reading_blueprint(redis_service))
+    app.register_blueprint(create_user_query_blueprint(redis_service))
+    app.register_blueprint(create_daily_jobs_blueprint(redis_service))
+    app.register_blueprint(create_logs_backup_blueprint(redis_service))
 
-if __name__ == '__main__':
-    app.run(debug=True, port=8050)
+    # 启动后台worker (如需测试队列式读数, 否则可注释)
+    start_background_worker(redis_service)
 
+    # 初始化Dash
+    dash_query = create_query_app(app)
+    dash_register = create_registration_app(app)
 
+    @app.route('/')
+    def index():
+        return "Main Index => /query/ for usage query, /register/ for user register, /api/* for REST."
 
+    return app
+
+if __name__=="__main__":
+    application = create_app()
+    application.run(host="0.0.0.0",port=8050,debug=True)
