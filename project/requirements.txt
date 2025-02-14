@@ -1,3 +1,5 @@
+dash==2.18.2
 Flask==3.0.3
+pandas==2.2.2
 redis==5.2.1
 Requests==2.32.3
