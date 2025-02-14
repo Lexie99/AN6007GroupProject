@@ -4,7 +4,6 @@ from dash import dcc, html, Input, Output, State, dash_table
 import requests
 import pandas as pd
 
-# **API 基础 URL**
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8050")
 QUERY_ENDPOINT = f"{API_BASE_URL}/api/user/query"
 
@@ -15,7 +14,8 @@ def create_query_app(flask_server):
         html.H2("Electricity Usage Query", style={'textAlign': 'center'}),
 
         html.Label("Meter ID:"),
-        dcc.Input(id="meter_id", type="text", placeholder="Enter 9-digit Meter ID", style={"width": "100%", "height": "30px"}),
+        dcc.Input(id="meter_id", type="text", placeholder="Enter 9-digit Meter ID", 
+                  style={"width": "100%", "height": "30px"}),
         html.Br(), html.Br(),
 
         html.Label("Select Time Period:"),
@@ -31,25 +31,29 @@ def create_query_app(flask_server):
             value="1d",
             style={"width": "100%"}
         ),
-        html.Br(),
+        html.Br(),html.Br(),
 
-        html.Button("Get Usage", id="get_usage", n_clicks=0, style={"width": "10%", "padding": "10px", "fontSize": "16px"}),
+        html.Button("Get Usage", id="get_usage", n_clicks=0,
+                    style={"width": "10%", "padding": "10px", "fontSize": "16px"}),
         html.Br(),
 
         html.Div(id="error_message", style={'color': 'red', 'textAlign': 'center'}),
 
         dcc.Graph(id="usage_chart"),
-        dash_table.DataTable(id="usage_table",
-                             columns=[
-                                 {"name": "Date", "id": "date"},
-                                 {"name": "Consumption (kWh)", "id": "consumption"}
-                             ],
-                             style_table={'overflowX': 'auto'})
+        dash_table.DataTable(
+            id="usage_table",
+            columns=[
+                {"name": "Date", "id": "date"},
+                {"name": "Consumption (kWh)", "id": "consumption"}
+            ],
+            style_table={'overflowX': 'auto'}
+        )
     ])
 
-    # **🔹 处理 API 查询**
     @query_app.callback(
-        [Output("usage_table", "data"), Output("usage_chart", "figure"), Output("error_message", "children")],
+        [Output("usage_table", "data"), 
+         Output("usage_chart", "figure"),
+         Output("error_message", "children")],
         [Input("get_usage", "n_clicks")],
         [State("meter_id", "value"), State("period", "value")]
     )
@@ -59,29 +63,58 @@ def create_query_app(flask_server):
 
         try:
             params = {'meter_id': meter_id, 'period': period}
-
             response = requests.get(QUERY_ENDPOINT, params=params)
+            if response.status_code != 200:
+                return [], {}, f"API call failed with status code {response.status_code}"
+            
             result = response.json()
-
             if result.get('status') != 'success':
-                return [], {}, "Query failed. Please try again."
+                msg = result.get('message', 'Unknown Error')
+                return [], {}, f"Query failed: {msg}"
 
-            # **🔹 处理 `Last 30 Minutes` 查询**
+            # 如果后端直接返回 data = "No data available"
+            if isinstance(result.get('data'), str):
+                return [], {}, result['data']
+
+            # ========== 30 分钟增量 ==========
             if "increment_last_30m" in result:
-                return [{"date": "Last 30 min", "consumption": result["increment_last_30m"]}], {}, ""
+                inc_30m = result["increment_last_30m"]
+                data_table = [{"date": "Last 30 min", "consumption": inc_30m}]
+                figure = {
+                    "data": [{
+                        "x": ["Last 30 min"],
+                        "y": [inc_30m],
+                        "type": "bar",
+                        "name": "30m Usage"
+                    }],
+                    "layout": {"title": "Last 30 Minutes Usage"}
+                }
+                return data_table, figure, ""
 
+            # ========== 固定时间范围 & 日用电量 ==========
+            # 这里我们只读 "daily_usage" 和 "total_usage"
             daily_usage = result.get("daily_usage", {})
-
             if not daily_usage:
-                return [], {}, "No data available for the given Meter ID."
+                return [], {}, "No daily usage data found."
 
-            # **🔹 处理 `daily_usage` 数据**
-            data = [{"date": k, "consumption": v} for k, v in daily_usage.items()]
+            total_usage_str = ""
+            if "total_usage" in result:
+                total_val = result["total_usage"]
+                total_usage_str = f" (Total: {total_val:.2f} kWh)"
+
+            data = [{"date": day, "consumption": val} for day, val in daily_usage.items()]
+            if not data:
+                return [], {}, "No data to display"
+
             df = pd.DataFrame(data)
-
             figure = {
-                "data": [{"x": df["date"], "y": df["consumption"], "type": "bar", "name": "Daily Usage"}],
-                "layout": {"title": "Electricity Usage Over Time"}
+                "data": [{
+                    "x": df["date"],
+                    "y": df["consumption"],
+                    "type": "bar",
+                    "name": "Daily Usage"
+                }],
+                "layout": {"title": f"Electricity Usage Over Time{total_usage_str}"}
             }
 
             return data, figure, ""

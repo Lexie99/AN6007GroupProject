@@ -17,6 +17,7 @@ user_register_api(app)
 create_registration_app(app)
 create_query_app(app)
 
+# 启动后台任务
 start_background_worker()
 
 if __name__ == '__main__':

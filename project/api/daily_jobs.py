@@ -7,6 +7,7 @@ import redis
 import threading
 from datetime import datetime, timedelta
 from flask import jsonify
+from api.logs_backup import log_event
 
 # Redis 连接
 redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -47,13 +48,14 @@ def daily_jobs_api(app):
 def run_maintenance():
     """
     后台执行的维护任务：
-    1. 打印提示进入维护模式
+    1. 日志记录进入维护模式
     2. 计算并备份昨日电表数据 -> process_daily_meter_readings()
-    3. 模拟停机：sleep(维护时长)
+    3. 模拟停机:sleep(维护时长)
     4. 维护结束后处理 pending -> process_pending_data()
     5. 退出维护模式
     """
-    print("🚧 Server entering maintenance mode (in background thread)...")
+    
+    log_event("daily_jobs", "Server entering maintenance mode...")
 
     # 1) 计算并备份昨日电表数据
     process_daily_meter_readings()
@@ -67,7 +69,7 @@ def run_maintenance():
 
     global IS_MAINTENANCE
     IS_MAINTENANCE = False
-    print("✅ Server maintenance completed (background thread).")
+    log_event("daily_jobs", "Server maintenance completed.")
 
 
 def process_daily_meter_readings():

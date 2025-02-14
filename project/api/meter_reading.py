@@ -3,6 +3,8 @@ import redis
 from flask import request, jsonify
 from datetime import datetime
 import os
+# 从 daily_jobs_api 引入维护模式标记
+from api.daily_jobs import IS_MAINTENANCE
 
 # ========== Redis 连接配置 ==========
 redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -11,8 +13,7 @@ r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
 # ========== 常量定义 ==========
 BULK_QUEUE_KEY = "meter:readings_queue"  # 用于批量读数的队列（Redis List）
-# 从 daily_jobs_api 引入维护模式标记
-from daily_jobs import IS_MAINTENANCE
+
 
 def meter_reading_api(app):
     """
