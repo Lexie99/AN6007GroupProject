@@ -11,8 +11,7 @@ class AppConfig:
 
     def __init__(self, config_path=None):
         if not config_path:
-            # 默认在项目根目录下 "config.json"
-            config_path = os.path.join("config.json")
+            config_path = os.path.join("project/config/config.json")
         self.config_path = config_path
 
         self.region_area_mapping = defaultdict(set)  # region -> set(area)
