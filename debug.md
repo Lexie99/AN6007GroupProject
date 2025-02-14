@@ -1,6 +1,6 @@
 **1. To do:**
-    加readme.md
     测试
+    讲解
     
 
 **2. 准备相应的documents：**
