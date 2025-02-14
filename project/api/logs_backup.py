@@ -15,16 +15,19 @@ def create_logs_backup_blueprint(redis_service):
 
     @bp.route('/get_backup', methods=['GET'])
     def get_backup():
+        """
+        GET /get_backup?date=YYYY-MM-DD
+        如未传 date,则默认获取昨天
+        """
         date_str = request.args.get("date")
         if not date_str:
-            y = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-            date_str = y
-        
-        backup_key = f"backup:meter_data:{date_str}"
-        bdata = redis_service.client.hgetall(backup_key)
-        if not bdata:
-            return jsonify({"status":"error","message":f"No backup data for {date_str}"}), 404
-        
+            date_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # 调用 RedisService 的 get_backup_data
+        bdata = redis_service.get_backup_data(date_str)
+        if not bdata:  # 空dict => 无数据
+            return jsonify({"status": "error", "message": f"No backup data for {date_str}"}), 404
+
         return jsonify({"status":"success","date":date_str,"backup_data":bdata})
 
     return bp

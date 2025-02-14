@@ -4,9 +4,11 @@ import time
 import threading
 from flask import jsonify, Blueprint
 from datetime import datetime, timedelta
+import json
 
 IS_MAINTENANCE = False
 MAINTENANCE_DURATION = 30  # 测试时可改短
+KEEP_DAYS = 365            # 超过多少天的历史读数要删除
 
 def create_daily_jobs_blueprint(redis_service):
     bp = Blueprint('daily_jobs', __name__)
@@ -30,9 +32,14 @@ def run_maintenance(redis_service):
 
     # 1) 备份昨日数据
     process_daily_meter_readings(redis_service)
-    # 2) 停机
+    
+    # 2) (可选) 清理旧数据
+    clean_old_data(redis_service, KEEP_DAYS)
+
+    # 3) 停机
     time.sleep(MAINTENANCE_DURATION)
-    # 3) 处理pending
+
+    # 4) 处理pending
     process_pending_data(redis_service)
 
     IS_MAINTENANCE = False
@@ -40,38 +47,45 @@ def run_maintenance(redis_service):
 
 def process_daily_meter_readings(redis_service):
     """
-    计算昨日总用电量, 存入 backup:meter_data:<yyyy-mm-dd>
+    计算昨日总用电量, 并通过 RedisService 存入 backup:meter_data:<yyyy-mm-dd>
     """
     yesterday = (datetime.now() - timedelta(days=1)).date()
-    backup_key = f"backup:meter_data:{yesterday}"
-
     start_ts = datetime(yesterday.year, yesterday.month, yesterday.day).timestamp()
-    end_ts   = start_ts + 86400
+    end_ts = start_ts + 86400
 
     meter_keys = redis_service.client.scan_iter("meter:*:history")
     total_processed = 0
-    import json
+
     for mk in meter_keys:
         parts = mk.split(":")
         if len(parts) < 3:
             continue
-        mid = parts[1]
+        meter_id = parts[1]
 
         recs = redis_service.client.zrangebyscore(mk, start_ts, end_ts)
         if len(recs) < 2:
             continue
-        
+
         data_list = []
         for raw in recs:
             try:
                 data_list.append(json.loads(raw))
             except:
                 continue
+
         usage = float(data_list[-1]["reading_value"]) - float(data_list[0]["reading_value"])
-        redis_service.client.hset(backup_key, mid, usage)
+        redis_service.store_backup_usage(str(yesterday), meter_id, usage)
         total_processed += 1
 
-    print(f"📊 Processed {total_processed} meters for {yesterday}, stored in {backup_key}.")
+    print(f"📊 Processed {total_processed} meters for {yesterday}, usage stored via RedisService.")
+
+def clean_old_data(redis_service, keep_days):
+    """
+    调用 RedisService.remove_old_history(keep_days)
+    删除 meter:*:history 中早于 cutoff_timestamp 的读数
+    """
+    total_deleted = redis_service.remove_old_history(keep_days)
+    print(f"🗑️ Deleted {total_deleted} old records older than {keep_days} days.")
 
 def process_pending_data(redis_service):
     """

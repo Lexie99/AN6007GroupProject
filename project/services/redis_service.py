@@ -1,7 +1,8 @@
 # services/redis_service.py
-
 import os
 import redis
+import json
+from datetime import datetime
 
 class RedisService:
     """
@@ -32,7 +33,7 @@ class RedisService:
         key = f"meter:{meter_id}:history"
         return self.client.zrangebyscore(key, min_score, max_score)
 
-    # ====== 日志操作 (如 /get_logs) ======
+    # ====== 日志操作 (/get_logs) ======
     def log_event(self, log_type, message, max_len=1000):
         """
         简易日志写入 logs:<log_type> 列表
@@ -44,6 +45,23 @@ class RedisService:
     def get_logs(self, log_type, limit=50):
         key = f"logs:{log_type}"
         return self.client.lrange(key, -limit, -1)
+    
+    # ====== 备份相关操作 ======
+    def store_backup_usage(self, date_str, meter_id, usage):
+        """
+        将某日某电表的使用量写入 backup:meter_data:{date_str} 哈希中
+        usage 可以是数字或字符串, 视需要
+        """
+        key = f"backup:meter_data:{date_str}"
+        self.client.hset(key, meter_id, usage)
+
+    def get_backup_data(self, date_str):
+        """
+        获取指定日期的备份哈希, 返回 dict[meter_id -> usage_string]
+        若没有则返回空dict
+        """
+        key = f"backup:meter_data:{date_str}"
+        return self.client.hgetall(key)
 
     # ====== 维护模式：move pending to history ======
     def move_pending_to_history(self, meter_id):
@@ -51,9 +69,6 @@ class RedisService:
         data_list = self.client.lrange(pending_key, 0, -1)
         if not data_list:
             return 0
-
-        import json
-        from datetime import datetime
 
         count = 0
         for raw in data_list:
@@ -65,7 +80,24 @@ class RedisService:
         self.client.delete(pending_key)
         return count
 
-    # 其他如 backups, cleaning, etc. 可自行扩展
+# ====== 维护模式：remove old history ======
+    def remove_old_history(self, keep_days):
+        """
+        删除 meter:*:history 中早于 cutoff_timestamp 的读数
+        返回删除的总记录数
+        """
+        from datetime import datetime, timedelta
+
+        cutoff_date = datetime.now() - timedelta(days=keep_days)
+        cutoff_ts = cutoff_date.timestamp()
+
+        deleted_records = 0
+        for key in self.client.scan_iter("meter:*:history"):
+            # zremrangebyscore(key, -inf, cutoff_ts)
+            removed = self.client.zremrangebyscore(key, "-inf", cutoff_ts)
+            deleted_records += removed
+
+        return deleted_records
 
     # ====== 测试辅助：清理数据 ======
     def clear_test_data(self):

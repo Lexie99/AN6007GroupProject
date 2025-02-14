@@ -39,7 +39,7 @@ def create_app():
 
     @app.route('/')
     def index():
-        return "Main Index => /query/ for usage query, /register/ for user register, /api/* for REST."
+        return "Main Index => /query/ for usage query, /register/ for user register."
 
     return app
 
