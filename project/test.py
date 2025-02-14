@@ -29,7 +29,7 @@ def get_meter_ids():
 
 def get_timestamp():
     """
-    如果 CUSTOM_TIMESTAMP 不为 None，则使用它；否则返回当前时间的 ISO 格式字符串。
+    如果 CUSTOM_TIMESTAMP 不为 None,则使用它；否则返回当前时间的 ISO 格式字符串。
     """
     return CUSTOM_TIMESTAMP if CUSTOM_TIMESTAMP else datetime.now().isoformat()
 

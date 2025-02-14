@@ -2,8 +2,11 @@ import redis
 import json
 from flask import request, jsonify
 from datetime import datetime, timedelta
+import os
 
-r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
 def log_backup_api(app):
     """

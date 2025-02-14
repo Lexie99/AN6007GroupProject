@@ -3,8 +3,11 @@ import redis
 import re
 from flask import request, jsonify
 from datetime import datetime
+import os
 
-r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
 # **🔹 直接在 Python 变量中存储 `region_area_mapping` 和 `dwelling_data`**
 region_area_mapping = {}

@@ -1,6 +1,7 @@
 from flask import Flask
 from api import daily_jobs_api, log_backup_api, meter_reading_api,user_query_api,user_register_api
 from dash_app import create_registration_app, create_query_app
+from background_worker import start_background_worker
 
 
 app = Flask(__name__)
@@ -15,6 +16,8 @@ user_register_api(app)
 # 绑定 Dash 页面
 create_registration_app(app)
 create_query_app(app)
+
+start_background_worker()
 
 if __name__ == '__main__':
     app.run(debug=True, port=8050)

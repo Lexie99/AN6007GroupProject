@@ -27,7 +27,9 @@ For api.py：
             - **好处**：这样可以在应用启动时统一加载配置，避免在多个模块中重复解析配置文件，同时也方便在不同环境下切换不同的配置。
 
 
-**1. To do:**加readme.md
+**1. To do:**
+    加readme.md
+    meter reading部分考虑加入多线程以应对多线程的情况
 
 **2. 准备相应的documents：**
 A documentation (or documents) containing:
@@ -61,4 +63,4 @@ e. Generative AI consultations Logs:
 
 **4. possible improvements：**
     1.目前的日志和备份仅用作记录，暂时没有restore的功能（因为restore的逻辑太复杂了）
-    2.
+    2.目前数据只用redis存在memory里，一旦redis服务器有问题，所有数据都会丢失，长久化储存和数据恢复还是需要存入本地磁盘，不能只使用memory
