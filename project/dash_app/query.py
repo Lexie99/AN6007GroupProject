@@ -59,46 +59,75 @@ def create_query_app(flask_server):
         [State("meter_id","value"), State("period","value")]
     )
     def update_usage(n_clicks, meter_id, period):
-        if not meter_id or not meter_id.isdigit() or len(meter_id)!=9:
-            return [], {}, "Invalid Meter ID(9-digit)!"
+        if not meter_id or not meter_id.isdigit() or len(meter_id) != 9:
+            return [], {}, "Invalid Meter ID (must be 9-digit)!"
 
         try:
             params = {"meter_id": meter_id, "period": period}
             resp = requests.get(QUERY_ENDPOINT, params=params)
-            if resp.status_code != 200:
-                return [], {}, f"API error: {resp.status_code}"
+            resp.raise_for_status()  # 若状态码非200，会抛出异常
 
             result = resp.json()
-            if result.get("status")!="success":
-                return [], {}, f"Error: {result.get('message')}"
-
-            # 30m
-            if "increment_last_30m" in result:
-                inc = result["increment_last_30m"]
-                dt_data = [{"date":"Last 30 min","consumption":inc}]
-                fig = {
-                    "data":[{"x":["Last 30 min"],"y":[inc],"type":"bar"}],
-                    "layout":{"title":"Usage in last 30 minutes"}
-                }
-                return dt_data, fig, ""
-
-            if isinstance(result.get('data'),str):
-                return [], {}, result['data']
-
-            daily_usage = result.get("daily_usage",{})
-            if not daily_usage:
-                return [], {}, "No daily usage data found."
-
-            total_usage = result.get("total_usage",0)
-            data_list = [{"date":d,"consumption":v} for d,v in daily_usage.items()]
-
-            df = pd.DataFrame(data_list)
-            fig = {
-                "data":[{"x":df["date"],"y":df["consumption"],"type":"bar","name":"Daily Usage"}],
-                "layout":{"title":f"Electricity Usage (Total: {total_usage:.2f} kWh)"}
-            }
-            return data_list, fig, ""
+            if result.get("status") != "success":
+                return [], {}, f"Error: {result.get('message', 'Unknown error')}"
+        except requests.exceptions.RequestException as e:
+            return [], {}, f"Request error: {e}"
         except Exception as e:
             return [], {}, f"Exception: {str(e)}"
 
-    return query_app
+        # 处理返回数据，根据不同的 period 绘图和返回表格数据
+        # 1) 30m 情况
+        if "increment_last_30m" in result:
+            inc = result["increment_last_30m"]
+            dt_data = [{"date": "Last 30 min", "consumption": inc}]
+            fig = {
+                "data": [{"x": ["Last 30 min"], "y": [inc], "type": "bar"}],
+                "layout": {"title": "Usage in Last 30 Minutes"}
+            }
+            return dt_data, fig, ""
+
+        # 2) 1d: 返回半小时增量数据列表
+        if "usage_list" in result:
+            usage_list = result["usage_list"]
+            df = pd.DataFrame(usage_list)  # 每条记录: { "time": "...", "consumption": ... }
+            if df.empty:
+                return [], {}, "No usage data available"
+            fig = {
+                "data": [{
+                    "x": df["time"],
+                    "y": df["consumption"],
+                    "type": "bar",
+                    "name": "Half-Hour Usage"
+                }],
+                "layout": {"title": f"1-Day Usage (Total: {result.get('total_usage', 0):.2f} kWh)"}
+            }
+            table_data = [{"date": row["time"], "consumption": row["consumption"]} for _, row in df.iterrows()]
+            return table_data, fig, ""
+
+        # 3) 1w/1m: 按天聚合数据
+        if "daily_usage" in result:
+            daily_list = result["daily_usage"]
+            df = pd.DataFrame(daily_list)  # 每条记录: { "date": "YYYY-MM-DD", "consumption": ... }
+            if df.empty:
+                return [], {}, "No daily usage data available"
+            fig = {
+                "data": [{"x": df["date"], "y": df["consumption"], "type": "bar"}],
+                "layout": {"title": f"Daily Usage (Total: {result.get('total_usage', 0):.2f} kWh)"}
+            }
+            table_data = [{"date": row["date"], "consumption": row["consumption"]} for _, row in df.iterrows()]
+            return table_data, fig, ""
+
+        # 4) 1y: 按月聚合数据
+        if "monthly_usage" in result:
+            monthly_list = result["monthly_usage"]
+            df = pd.DataFrame(monthly_list)  # 每条记录: { "month": "YYYY-MM", "consumption": ... }
+            if df.empty:
+                return [], {}, "No monthly usage data available"
+            fig = {
+                "data": [{"x": df["month"], "y": df["consumption"], "type": "bar"}],
+                "layout": {"title": f"Monthly Usage (Total: {result.get('total_usage', 0):.2f} kWh)"}
+            }
+            table_data = [{"date": row["month"], "consumption": row["consumption"]} for _, row in df.iterrows()]
+            return table_data, fig, ""
+
+        return [], {}, "Unsupported data format."
