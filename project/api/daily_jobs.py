@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 
 IS_MAINTENANCE = False
-MAINTENANCE_DURATION = 30  # 测试时可改短
+MAINTENANCE_DURATION = 180  # 测试时可改短
 KEEP_DAYS = 365            # 超过多少天的历史读数要删除
 
 def create_daily_jobs_blueprint(redis_service):

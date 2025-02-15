@@ -1,10 +1,4 @@
 # services/background_worker.py
-
-"""
-演示一个简单函数式后台worker，不封装成类，
-可以对 Redis 列表 meter:readings_queue 进行批量处理。
-"""
-
 import os
 import time
 import json
