@@ -9,7 +9,7 @@ from services.background_worker import start_background_worker
 from api.user_register import create_user_register_blueprint
 from api.meter_reading import create_meter_reading_blueprint
 from api.user_query import create_user_query_blueprint
-from api.daily_jobs import create_daily_jobs_blueprint, IS_MAINTENANCE
+from api.daily_jobs import create_daily_jobs_blueprint, create_maintenance_blueprint
 from api.logs_backup import create_logs_backup_blueprint
 
 # Dash front-end
@@ -29,6 +29,7 @@ def create_app():
     app.register_blueprint(create_user_query_blueprint(redis_service))
     app.register_blueprint(create_daily_jobs_blueprint(redis_service))
     app.register_blueprint(create_logs_backup_blueprint(redis_service))
+    app.register_blueprint(create_maintenance_blueprint())
     
     # 启动后台worker (如需测试队列式读数, 否则可注释)
     start_background_worker(redis_service)
@@ -41,15 +42,6 @@ def create_app():
     def index():
         return "Main Index => /query/ for usage query, /register/ for user register."
     
-    @app.before_request
-    def maintenance_mode_filter():
-        # 如果处于维护模式，且请求的 URL 不以 "/daily_jobs" 开头，则返回 503
-        if IS_MAINTENANCE and not request.path.startswith('/daily_jobs'):
-            return jsonify({
-                'status': 'error',
-                'message': 'Server is in maintenance mode. Please try again later.'
-            }), 503
-            
     return app
 
 if __name__=="__main__":

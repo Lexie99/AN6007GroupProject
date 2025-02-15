@@ -1,13 +1,12 @@
 # api/daily_jobs.py
-
 import time
 import threading
-from flask import jsonify, Blueprint
+from flask import jsonify, Blueprint, request
 from datetime import datetime, timedelta
 import json
+import services.state # 引入专门的状态模块
 
-IS_MAINTENANCE = False
-MAINTENANCE_DURATION = 180  # 测试时可改短
+MAINTENANCE_DURATION = 180  # 维护时长（秒），测试时可调短
 KEEP_DAYS = 365            # 超过多少天的历史读数要删除
 
 def create_daily_jobs_blueprint(redis_service):
@@ -15,11 +14,10 @@ def create_daily_jobs_blueprint(redis_service):
 
     @bp.route('/stopserver', methods=['GET'])
     def stop_server():
-        global IS_MAINTENANCE
-        if IS_MAINTENANCE:
+        if services.state.IS_MAINTENANCE:
             return jsonify({'status': 'error', 'message': 'Already in maintenance'}), 400
-        
-        IS_MAINTENANCE = True
+
+        services.state.IS_MAINTENANCE = True  # 修改全局状态
         t = threading.Thread(target=run_maintenance, args=(redis_service,), daemon=True)
         t.start()
         return jsonify({'status': 'success', 'message': 'Server in maintenance mode. Background job started.'})
@@ -27,22 +25,21 @@ def create_daily_jobs_blueprint(redis_service):
     return bp
 
 def run_maintenance(redis_service):
-    global IS_MAINTENANCE
     print("🚧 Entering maintenance mode...")
 
     # 1) 备份昨日数据
     process_daily_meter_readings(redis_service)
     
-    # 2) (可选) 清理旧数据
+    # 2) 清理旧数据
     clean_old_data(redis_service, KEEP_DAYS)
 
-    # 3) 停机
+    # 3) 维持维护状态
     time.sleep(MAINTENANCE_DURATION)
 
-    # 4) 处理pending
+    # 4) 处理 pending 数据
     process_pending_data(redis_service)
 
-    IS_MAINTENANCE = False
+    services.state.IS_MAINTENANCE = False
     print("✅ Maintenance done.")
 
 def process_daily_meter_readings(redis_service):
@@ -70,10 +67,16 @@ def process_daily_meter_readings(redis_service):
         for raw in recs:
             try:
                 data_list.append(json.loads(raw))
-            except:
+            except Exception as e:
+                print(f"Error decoding JSON for key {mk}: {e}")
                 continue
 
-        usage = float(data_list[-1]["reading_value"]) - float(data_list[0]["reading_value"])
+        try:
+            usage = float(data_list[-1]["reading_value"]) - float(data_list[0]["reading_value"])
+        except Exception as e:
+            print(f"Error calculating usage for meter {meter_id}: {e}")
+            continue
+
         redis_service.store_backup_usage(str(yesterday), meter_id, usage)
         total_processed += 1
 
@@ -99,3 +102,22 @@ def process_pending_data(redis_service):
         if count:
             total_m += 1
     print(f"✅ Processed pending data for {total_m} meter(s).")
+
+# 全局维护检查蓝图
+def create_maintenance_blueprint():
+    """
+    注册此蓝图后,在维护期间除允许路径外,其他所有API请求都将返回 503 错误。
+    """
+    bp = Blueprint('maintenance', __name__)
+
+    @bp.before_app_request
+    def check_maintenance():
+        # 允许访问的路径列表（可根据需要调整）
+        allowed_paths = ['/stopserver', '/backup','/meter/reading','/meter/bulk_readings']
+        if services.state.IS_MAINTENANCE and request.path not in allowed_paths:
+            return jsonify({
+                'status': 'error',
+                'message': 'Server is in maintenance mode. Please try again later.'
+            }), 503
+
+    return bp

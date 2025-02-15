@@ -108,8 +108,8 @@ def get_logs(log_type="daily_jobs", limit=5):
 if __name__ == "__main__":
     print("===== 测试脚本开始 =====")
 
-    print("[Test] 清理旧数据...")
-    clear_test_data()
+    #print("[Test] 清理旧数据...")
+    #clear_test_data()
 
     print("[Test] 注册 meter_id...")
     for mid in TEST_METER_IDS:
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
        
     print("[Test] 发送电表读数...")
-    custom_timestamp_str = "2025-02-14T12:30:00"
+    custom_timestamp_str = "2025-02-13T12:30:00"
     for i in range(READ_TIMES):
         for mid in TEST_METER_IDS:
             # 可选：自定义时间，例如传入指定的时间字符串或 datetime 对象
