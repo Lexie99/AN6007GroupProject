@@ -40,8 +40,9 @@ def _worker_loop(redis_service):
 
 def process_batch(redis_service):
     """
-    1) 从 meter:readings_queue 取 BULK_BATCH_SIZE 条
-    2) 批量写 meter:{id}:history
+    1) 从 meter:readings_queue 取 BULK_BATCH_SIZE 条记录
+    2) 对每条记录计算当次用电量（累积差值）
+    3) 批量更新 meter:{id}:history,并同时更新该电表的 last_reading
     """
     batch_data = []
     for _ in range(BULK_BATCH_SIZE):
@@ -55,21 +56,39 @@ def process_batch(redis_service):
         return
 
     pipeline = redis_service.client.pipeline(transaction=False)
+
     for raw in batch_data:
         try:
             record = json.loads(raw)
             meter_id = record["meter_id"]
             ts_str = record["timestamp"]
-            reading_val = record["reading"]
+            reading_val = float(record["reading"])
             dt_obj = datetime.fromisoformat(ts_str)
-            score = dt_obj.timestamp()
+            current_timestamp = dt_obj.timestamp()
 
-            rec_str = json.dumps({
+            # 使用一个单独的键存储该电表上一次的累积读数
+            last_key = f"meter:{meter_id}:last_reading"
+            last_value = redis_service.client.get(last_key)
+            if last_value is not None:
+                last_value = float(last_value)
+                consumption = reading_val - last_value
+            else:
+                # 如果没有上次数据，则无法计算增量，默认设为0
+                consumption = 0.0
+
+            # 更新 last_reading 为当前读数
+            pipeline.set(last_key, reading_val)
+
+            # 构造存入历史记录的完整数据，包含原始读数与计算出的当次用电量
+            new_record = json.dumps({
                 "timestamp": dt_obj.isoformat(),
-                "reading_value": reading_val
+                "reading_value": reading_val,
+                "consumption": consumption
             })
 
-            pipeline.zadd(f"meter:{meter_id}:history", {rec_str: score})
+            # 存入历史记录的有序集合，score使用时间戳
+            history_key = f"meter:{meter_id}:history"
+            pipeline.zadd(history_key, {new_record: current_timestamp})
         except (KeyError, ValueError) as e:
             print(f"[background_worker] Skipped invalid record: {raw} => {e}")
             continue

@@ -65,22 +65,55 @@ class RedisService:
 
     # ====== 维护模式：move pending to history ======
     def move_pending_to_history(self, meter_id):
+        """
+        将维护期间存入 pending 队列的数据转移到历史记录中，并在转移过程中计算实际用电量（累积差值）。
+        使用一个 Redis 键 meter:{meter_id}:last_reading 来存储上一次的累积读数，
+        计算 consumption = 当前累积读数 - 上次累积读数。
+        """
         pending_key = f"meter:{meter_id}:pending"
         data_list = self.client.lrange(pending_key, 0, -1)
         if not data_list:
             return 0
 
         count = 0
+        last_key = f"meter:{meter_id}:last_reading"
         for raw in data_list:
-            record = json.loads(raw)
-            ts = datetime.fromisoformat(record["timestamp"]).timestamp()
-            self.add_meter_reading(meter_id, raw, ts)
-            count += 1
-        # 清空 pending
+            try:
+                record = json.loads(raw)
+                ts_str = record["timestamp"]
+                reading_val = float(record["reading"])
+                dt_obj = datetime.fromisoformat(ts_str)
+                current_timestamp = dt_obj.timestamp()
+
+                # 获取上一次累积读数
+                last_value = self.client.get(last_key)
+                if last_value is not None:
+                    last_value = float(last_value)
+                    consumption = reading_val - last_value
+                else:
+                    consumption = 0.0
+
+                # 更新上次累积读数为当前读数
+                self.client.set(last_key, reading_val)
+
+                # 构造包含 consumption 的记录
+                new_record = json.dumps({
+                    "timestamp": dt_obj.isoformat(),
+                    "reading_value": reading_val,
+                    "consumption": consumption
+                })
+
+                self.add_meter_reading(meter_id, new_record, current_timestamp)
+                count += 1
+            except Exception as e:
+                print(f"Error processing pending record: {raw} => {e}")
+                continue
+
+        # 清空 pending 队列
         self.client.delete(pending_key)
         return count
 
-# ====== 维护模式：remove old history ======
+    # ====== 维护模式：remove old history ======
     def remove_old_history(self, keep_days):
         """
         删除 meter:*:history 中早于 cutoff_timestamp 的读数
@@ -93,7 +126,6 @@ class RedisService:
 
         deleted_records = 0
         for key in self.client.scan_iter("meter:*:history"):
-            # zremrangebyscore(key, -inf, cutoff_ts)
             removed = self.client.zremrangebyscore(key, "-inf", cutoff_ts)
             deleted_records += removed
 
@@ -102,7 +134,7 @@ class RedisService:
     # ====== 测试辅助：清理数据 ======
     def clear_test_data(self):
         """
-        仅删除all_users、meter:*、user_data:* 方便测试
+        仅删除 all_users、meter:*、user_data:* 方便测试
         """
         if self.client.exists("all_users"):
             self.client.delete("all_users")

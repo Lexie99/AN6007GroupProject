@@ -45,6 +45,7 @@ def run_maintenance(redis_service):
 def process_daily_meter_readings(redis_service):
     """
     计算昨日总用电量, 并通过 RedisService 存入 backup:meter_data:<yyyy-mm-dd>
+    采用将昨日每半小时的 consumption 累加求和
     """
     yesterday = (datetime.now() - timedelta(days=1)).date()
     start_ts = datetime(yesterday.year, yesterday.month, yesterday.day).timestamp()
@@ -58,29 +59,26 @@ def process_daily_meter_readings(redis_service):
         if len(parts) < 3:
             continue
         meter_id = parts[1]
-
         recs = redis_service.client.zrangebyscore(mk, start_ts, end_ts)
-        if len(recs) < 2:
+        if not recs:
             continue
 
-        data_list = []
+        total_consumption = 0.0
         for raw in recs:
             try:
-                data_list.append(json.loads(raw))
+                rec = json.loads(raw)
+                # 累加每条记录预先计算好的消费值
+                consumption = float(rec.get("consumption", 0))
+                total_consumption += consumption
             except Exception as e:
-                print(f"Error decoding JSON for key {mk}: {e}")
+                print(f"Error processing record in key {mk}: {e}")
                 continue
 
-        try:
-            usage = float(data_list[-1]["reading_value"]) - float(data_list[0]["reading_value"])
-        except Exception as e:
-            print(f"Error calculating usage for meter {meter_id}: {e}")
-            continue
-
-        redis_service.store_backup_usage(str(yesterday), meter_id, usage)
+        redis_service.store_backup_usage(str(yesterday), meter_id, total_consumption)
         total_processed += 1
 
-    print(f"📊 Processed {total_processed} meters for {yesterday}, usage stored via RedisService.")
+    print(f"📊 Processed {total_processed} meters for {yesterday}, backup usage stored.")
+
 
 def clean_old_data(redis_service, keep_days):
     """
