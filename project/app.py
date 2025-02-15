@@ -30,18 +30,6 @@ def create_app():
     app.register_blueprint(create_daily_jobs_blueprint(redis_service))
     app.register_blueprint(create_logs_backup_blueprint(redis_service))
     
-    @app.before_request
-    def maintenance_mode_filter():
-        """
-        如果处于维护模式，只有 daily_jobs 相关的接口可以正常访问，
-        其他 API 返回 503 状态码。
-        """
-        if IS_MAINTENANCE and (not request.blueprint or request.blueprint != "daily_jobs"):
-            return jsonify({
-                'status': 'error',
-                'message': 'Server is in maintenance mode. Please try again later.'
-            }), 503
-
     # 启动后台worker (如需测试队列式读数, 否则可注释)
     start_background_worker(redis_service)
 
@@ -52,7 +40,16 @@ def create_app():
     @app.route('/')
     def index():
         return "Main Index => /query/ for usage query, /register/ for user register."
-
+    
+    @app.before_request
+    def maintenance_mode_filter():
+        # 如果处于维护模式，且请求的 URL 不以 "/daily_jobs" 开头，则返回 503
+        if IS_MAINTENANCE and not request.path.startswith('/daily_jobs'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Server is in maintenance mode. Please try again later.'
+            }), 503
+            
     return app
 
 if __name__=="__main__":
