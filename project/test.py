@@ -27,7 +27,7 @@ TEST_METER_IDS = [
     "100000016", "100000017", "100000018", "100000019", "100000020"
 ]
 READ_TIMES = 3
-MAINTENANCE_WAIT = 10
+MAINTENANCE_WAIT = 60
 
 # 全局变量，用于记录每个电表的上一次读数
 last_readings = {}
