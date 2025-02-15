@@ -4,9 +4,9 @@ import threading
 from flask import jsonify, Blueprint, request
 from datetime import datetime, timedelta
 import json
-import services.state # 引入专门的状态模块
+import services.state  # 引入专门的状态模块
 
-MAINTENANCE_DURATION = 180  # 维护时长（秒），测试时可调短
+MAINTENANCE_DURATION = 60  # 维护时长（秒），测试时可调短
 KEEP_DAYS = 365            # 超过多少天的历史读数要删除
 
 def create_daily_jobs_blueprint(redis_service):
@@ -18,6 +18,7 @@ def create_daily_jobs_blueprint(redis_service):
             return jsonify({'status': 'error', 'message': 'Already in maintenance'}), 400
 
         services.state.IS_MAINTENANCE = True  # 修改全局状态
+        redis_service.log_event("daily_jobs", f"Stopserver triggered: entering maintenance mode at {datetime.now().isoformat()}")
         t = threading.Thread(target=run_maintenance, args=(redis_service,), daemon=True)
         t.start()
         return jsonify({'status': 'success', 'message': 'Server in maintenance mode. Background job started.'})
@@ -26,7 +27,8 @@ def create_daily_jobs_blueprint(redis_service):
 
 def run_maintenance(redis_service):
     print("🚧 Entering maintenance mode...")
-
+    redis_service.log_event("daily_jobs", f"Entering maintenance mode at {datetime.now().isoformat()}")
+    
     # 1) 备份昨日数据
     process_daily_meter_readings(redis_service)
     
@@ -41,6 +43,7 @@ def run_maintenance(redis_service):
 
     services.state.IS_MAINTENANCE = False
     print("✅ Maintenance done.")
+    redis_service.log_event("daily_jobs", f"Maintenance done at {datetime.now().isoformat()}")
 
 def process_daily_meter_readings(redis_service):
     """
@@ -72,21 +75,23 @@ def process_daily_meter_readings(redis_service):
                 total_consumption += consumption
             except Exception as e:
                 print(f"Error processing record in key {mk}: {e}")
+                redis_service.log_event("daily_jobs", f"Error processing record in key {mk}: {e}")
                 continue
 
         redis_service.store_backup_usage(str(yesterday), meter_id, total_consumption)
         total_processed += 1
+        redis_service.log_event("daily_jobs", f"Processed backup for meter {meter_id} with usage {total_consumption}")
 
     print(f"📊 Processed {total_processed} meters for {yesterday}, backup usage stored.")
-
+    redis_service.log_event("daily_jobs", f"Processed backup usage for {total_processed} meters for {yesterday}")
 
 def clean_old_data(redis_service, keep_days):
     """
-    调用 RedisService.remove_old_history(keep_days)
     删除 meter:*:history 中早于 cutoff_timestamp 的读数
     """
     total_deleted = redis_service.remove_old_history(keep_days)
     print(f"🗑️ Deleted {total_deleted} old records older than {keep_days} days.")
+    redis_service.log_event("daily_jobs", f"Deleted {total_deleted} old records older than {keep_days} days.")
 
 def process_pending_data(redis_service):
     """
@@ -99,7 +104,9 @@ def process_pending_data(redis_service):
         count = redis_service.move_pending_to_history(mid)
         if count:
             total_m += 1
+            redis_service.log_event("daily_jobs", f"Processed {count} pending records for meter {mid}")
     print(f"✅ Processed pending data for {total_m} meter(s).")
+    redis_service.log_event("daily_jobs", f"Processed pending data for {total_m} meter(s).")
 
 # 全局维护检查蓝图
 def create_maintenance_blueprint():

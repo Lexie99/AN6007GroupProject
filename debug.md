@@ -37,3 +37,4 @@ e. Generative AI consultations Logs:
     1.目前的日志和备份仅用作记录，暂时没有restore的功能（因为restore的逻辑太复杂了）
     2.目前数据只用redis存在memory里，一旦redis服务器有问题，所有数据都会丢失，长久化储存和数据恢复还是需要存入本地磁盘，不能只使用memory
     3.没有做到完全的前后端分离，dash.register中，为了用户注册时area下拉项能够根据选择的region自动更新，引入了AppConfig
+    4.对于电表读数异常没有太多检验机制，eg：同一时间戳重复数据，电量消费异常，读数缺失
