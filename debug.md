@@ -1,4 +1,5 @@
 **1. To do:**
+    在background worker中增加异常数据验证
     测试
     讲解
     录demo
