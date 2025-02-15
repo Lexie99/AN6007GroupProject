@@ -80,6 +80,9 @@ def create_user_query_blueprint(redis_service):
                 continue
             increments.append((t2, inc))
             total_usage += inc
+            
+        if not increments:
+            return jsonify({'status': 'success', 'data': 'No data available (insufficient records)'}), 200
 
         # 根据 period 的不同进行数据聚合
         if period == "1d":
