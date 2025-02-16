@@ -5,13 +5,17 @@ import json
 from datetime import datetime
 
 class RedisService:
-    """
-    集中管理 Redis 连接与常用操作
-    """
+    _pool = None  # 类级别连接池
+
     def __init__(self):
-        self.host = os.getenv('REDIS_HOST', 'localhost')
-        self.port = int(os.getenv('REDIS_PORT', 6379))
-        self.client = redis.Redis(host=self.host, port=self.port, decode_responses=True)
+        if RedisService._pool is None:
+            RedisService._pool = redis.ConnectionPool(
+                host=os.getenv('REDIS_HOST', 'localhost'),
+                port=int(os.getenv('REDIS_PORT', 6379)),
+                decode_responses=True,
+                max_connections=10  # 控制最大连接数
+            )
+        self.client = redis.Redis(connection_pool=RedisService._pool)
 
     # ====== 注册用户相关 ======
     def is_meter_registered(self, meter_id):
@@ -34,14 +38,16 @@ class RedisService:
         return self.client.zrangebyscore(key, min_score, max_score)
 
     # ====== 日志操作 (/get_logs) ======
-    def log_event(self, log_type, message, max_len=1000):
-        """
-        简易日志写入 logs:<log_type> 列表
-        """
-        key = f"logs:{log_type}"
-        self.client.rpush(key, message)
-        self.client.ltrim(key, -max_len, -1)
-
+    def log_event(self, log_type, message):
+        """结构化日志记录"""
+        structured_log = {
+            "timestamp": datetime.now().isoformat(),
+            "log_type": log_type,
+            "message": message,
+            "service": self.__class__.__name__
+        }
+        self.client.rpush(f"logs:{log_type}", json.dumps(structured_log))  # 存储为JSON字符串
+        
     def get_logs(self, log_type, limit=50):
         key = f"logs:{log_type}"
         return self.client.lrange(key, -limit, -1)

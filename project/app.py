@@ -22,6 +22,7 @@ def create_app():
     # 初始化配置与 RedisService
     app_config = AppConfig()
     redis_service = RedisService()
+    redis_service.log_event("system", "Application initialized")  # 启动日志
 
     # 注册API路由
     app.register_blueprint(create_user_register_blueprint(app_config, redis_service))

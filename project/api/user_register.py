@@ -1,8 +1,8 @@
 # api/user_register.py
-
 import re
 from flask import request, jsonify, Blueprint
 from models.user import User
+from services.validation import validate_meter_id
 
 def create_user_register_blueprint(app_config, redis_service):
     """
@@ -23,7 +23,8 @@ def create_user_register_blueprint(app_config, redis_service):
 
             if not meter_id or not region or not area or not dwelling_type:
                 return jsonify({'status': 'error', 'message': 'Missing fields'}), 400
-            if not re.fullmatch(r"\d{9}", meter_id):
+            
+            if not validate_meter_id(meter_id):  # 使用统一校验
                 return jsonify({'status': 'error', 'message': 'MeterID must be 9 digits'}), 400
 
             if redis_service.is_meter_registered(meter_id):

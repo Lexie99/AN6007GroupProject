@@ -4,6 +4,7 @@ import json
 from flask import request, jsonify, Blueprint
 from datetime import datetime
 import services.state
+from services.validation import validate_meter_id,validate_timestamp
 
 def create_meter_reading_blueprint(redis_service):
     bp = Blueprint('meter_reading_api', __name__)
@@ -29,9 +30,8 @@ def create_meter_reading_blueprint(redis_service):
             timestamp_str = data.get('timestamp')
             reading_val = data.get('reading')
 
-            # 基础校验
-            if not meter_id or not timestamp_str or reading_val is None:
-                return jsonify({'status': 'error', 'message': 'Missing fields'}), 400
+            if not validate_meter_id(meter_id):  # 统一校验
+                return jsonify({'status': 'error', 'message': 'Invalid MeterID format'}), 400
 
             # 检查电表是否注册
             if not redis_service.is_meter_registered(meter_id):
