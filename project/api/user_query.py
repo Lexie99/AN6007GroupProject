@@ -1,5 +1,3 @@
-# api/user_query_api.py
-
 import json
 from flask import request, jsonify, Blueprint
 from datetime import datetime, timedelta
