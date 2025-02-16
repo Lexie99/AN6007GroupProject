@@ -26,6 +26,21 @@ def create_daily_jobs_blueprint(redis_service):
         t = threading.Thread(target=run_maintenance, args=(redis_service, maint_state), daemon=True)
         t.start()
         return jsonify({'status': 'success', 'message': 'Server in maintenance mode. Background job started.'})
+    
+    @bp.before_app_request
+    def check_maintenance():
+        allowed_paths = [
+            '/stopserver',        # 触发维护模式
+            '/get_backup',        # 查询备份数据
+            '/get_logs',          # 查询日志
+            '/meter/reading',     # 单条读数上报
+            '/meter/bulk_readings' # 批量读数上报
+        ]
+        if maint_state.is_maintenance() and request.path not in allowed_paths:
+            return jsonify({
+                'status': 'error',
+                'message': 'Server is in maintenance mode. Please try again later.'
+            }), 503
 
     return bp
 
