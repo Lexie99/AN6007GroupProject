@@ -73,24 +73,27 @@ def process_daily_meter_readings(redis_service):
     total_processed = 0
     # 遍历所有电表的历史数据键
     for key in redis_service.client.scan_iter("meter:*:history"):
-        meter_id = key.split(":")[1]  # 解析电表ID
+        # 如果 key 为 bytes 类型，则解码
+        if isinstance(key, bytes):
+            key = key.decode("utf-8")
+        parts = key.split(":")
+        if len(parts) < 3:
+            continue
+        meter_id = parts[1]  # 解析电表ID
         records = redis_service.client.zrangebyscore(key, start_ts, end_ts)
         if not records:
             continue
 
-        total_consumption = sum(
-            float(json.loads(rec).get("consumption", 0) for rec in records
-        ))
+        # 修正语法错误，确保正确计算总用电量
+        total_consumption = sum(float(json.loads(rec).get("consumption", 0)) for rec in records)
         # 存储备份数据
         redis_service.store_backup_usage(str(yesterday), meter_id, total_consumption)
         total_processed += 1
 
-    redis_service.log_event("daily_jobs", f"📊 Backup {total_processed} meter reading data for yestearday")
-    
+    redis_service.log_event("daily_jobs", f"📊 Backup {total_processed} meter reading data for yesterday")
+
 def clean_old_data(redis_service, keep_days):
-    """清理超过保留天数的历史数据"""
-    cutoff_date = datetime.now() - timedelta(days=keep_days)
-    total_deleted = redis_service.remove_old_history(cutoff_date.timestamp())
+    total_deleted = redis_service.remove_old_history(keep_days)
     redis_service.log_event("daily_jobs", f"🗑️ Deleted {total_deleted} old records older than {keep_days} days.")
 
 def process_pending_data(redis_service):
@@ -98,8 +101,14 @@ def process_pending_data(redis_service):
     pending_keys = redis_service.client.keys("meter:*:pending")
     total_meters = 0
     for key in pending_keys:
-        meter_id = key.split(":")[1]
+        # 如果 key 为 bytes 类型，则解码
+        if isinstance(key, bytes):
+            key = key.decode("utf-8")
+        parts = key.split(":")
+        if len(parts) < 3:
+            continue
+        meter_id = parts[1]
         count = redis_service.move_pending_to_history(meter_id)
         if count > 0:
             total_meters += 1
-    redis_service.log_event("daily_jobs", f"✅ Processed pending data for{total_meters} meter(s).")
+    redis_service.log_event("daily_jobs", f"✅ Processed pending data for {total_meters} meter(s).")

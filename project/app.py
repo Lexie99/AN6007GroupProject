@@ -1,9 +1,8 @@
-# app.py
-
 from flask import Flask,request,jsonify
 from config.app_config import AppConfig
 from services.redis_service import RedisService
 from services.background_worker import start_background_worker
+import os
 
 # 导入所有 create_xxx_blueprint 函数
 from api.user_register import create_user_register_blueprint
@@ -16,11 +15,14 @@ from api.logs_backup import create_logs_backup_blueprint
 from dash_app.query import create_query_app
 from dash_app.register import create_registration_app
 
+config_path = os.getenv("CONFIG_PATH", "project/config/config.json")
+
+
 def create_app():
     app = Flask(__name__)
 
     # 初始化配置与 RedisService
-    app_config = AppConfig()
+    app_config = AppConfig(config_path=config_path)
     redis_service = RedisService()
     redis_service.log_event("system", "Application initialized")  # 启动日志
 

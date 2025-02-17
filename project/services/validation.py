@@ -1,5 +1,5 @@
 import re
-import datetime
+from datetime import datetime
 
 def validate_meter_id(meter_id):
     """统一校验Meter ID格式"""

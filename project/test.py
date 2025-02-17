@@ -45,6 +45,7 @@ def clear_test_data():
     user_keys = list(r.scan_iter("user_data:*"))
     for uk in user_keys:
         r.delete(uk)
+    #r.flushall() 谨慎选择，这是一键全删
 
 def register_meter(meter_id):
     payload = {

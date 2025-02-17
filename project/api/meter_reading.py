@@ -1,11 +1,9 @@
-# api/meter_reading_api.py
-
 import json
 from flask import request, jsonify, Blueprint
 from datetime import datetime
 from services.state import MaintenanceState
 from services.validation import validate_meter_id, validate_timestamp
-
+import traceback
 # 添加批量记录数限制
 MAX_BULK_RECORDS = 1000
 
@@ -41,6 +39,7 @@ def create_meter_reading_blueprint(redis_service):
         - 维护模式下数据存入 pending 队列
         - 正常模式下数据存入 readings_queue
         """
+        data = None
         try:
             data = request.get_json()
             if not data:
@@ -69,17 +68,18 @@ def create_meter_reading_blueprint(redis_service):
 
             # 记录存储操作日志
             redis_service.log_event("meter_reading", 
-                f"Stored reading: meter_id={meter_id}, timestamp={data['timestamp']}")
+                f"Stored reading: meter_id={meter_id}, timestamp={data.get('timestamp')}")
             redis_service.client.rpush(key, json.dumps(data))
             
             return jsonify({'status': 'success', 'message': message}), 200
         
-        except Exception as e:
-            # 记录详细错误日志
+        except Exception as e:        
+            traceback.print_exc()  # 打印详细异常信息到控制台
+            meter_info = data.get('meter_id') if data and isinstance(data, dict) else 'unknown'
             redis_service.log_event("error", 
-                f"Failed to process single reading: {str(e)} | Data: {data.get('meter_id', 'unknown')}")
+                f"Failed to process single reading: {str(e)} | Data: {meter_info}")
             return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
-
+    
     @bp.route('/meter/bulk_readings', methods=['POST'])
     def receive_bulk_readings():
         """
@@ -87,6 +87,7 @@ def create_meter_reading_blueprint(redis_service):
         - 使用 Redis 管道批量提交提升性能
         - 自动过滤无效数据并统计结果
         """
+        readings = None
         try:
             readings = request.get_json()
             if not isinstance(readings, list):
@@ -114,11 +115,7 @@ def create_meter_reading_blueprint(redis_service):
                     continue
 
                 # 选择存储队列
-                if is_maintenance:
-                    key = f"meter:{meter_id}:pending"
-                else:
-                    key = "meter:readings_queue"
-                
+                key = f"meter:{meter_id}:pending" if is_maintenance else "meter:readings_queue"
                 pipeline.rpush(key, json.dumps(record))
                 success_count += 1
 
@@ -133,8 +130,9 @@ def create_meter_reading_blueprint(redis_service):
             }), 200
         
         except Exception as e:
-            redis_service.log_event("error", 
-                f"Bulk upload failed: {str(e)} | Total records: {len(readings)}")
+            traceback.print_exc()  # 打印详细异常信息到控制台
+            total_records = len(readings) if readings and isinstance(readings, list) else 0
+            redis_service.log_event("error",
+                                    f"Bulk upload failed: {str(e)} | Total records: {total_records}")
             return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
-
     return bp
