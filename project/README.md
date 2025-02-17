@@ -78,6 +78,8 @@ my_project/
 ├── services/
 │   ├── redis_service.py      # RedisService 类 (管理 Redis 连接与操作)
 │   └── background_worker.py  # 后台 Worker (函数式实现)
+│   ├── state.py      # MaintenanceState类（管理维护状态）
+│   └── validation.py  # 重复的校验内容 (函数式实现)
 ├── api/
 │   ├── user_register_api.py  # /api/user/register
 │   ├── meter_reading_api.py  # /meter/reading
