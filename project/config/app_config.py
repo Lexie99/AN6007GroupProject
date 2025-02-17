@@ -4,14 +4,17 @@ import json
 import os
 from collections import defaultdict
 
+# 支持环境变量覆盖配置路径
+config_path = os.getenv("CONFIG_PATH", "project/config/config.json")
+
 class AppConfig:
     """
     负责加载 config.json,提供 region_area_mapping / dwelling_type_set 等配置信息。
     """
 
-    def __init__(self, config_path=None):
+    def __init__(self, config_path):
         if not config_path:
-            config_path = os.path.join("project/config/config.json")
+            config_path = os.path.join(config_path, "config.json")
         self.config_path = config_path
 
         self.region_area_mapping = defaultdict(set)  # region -> set(area)

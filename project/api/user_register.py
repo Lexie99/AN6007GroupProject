@@ -7,28 +7,12 @@ from services.redis_service import RedisService
 from config.app_config import AppConfig
 
 def create_user_register_blueprint(app_config: AppConfig, redis_service: RedisService):
-    """
-    用户注册接口蓝图：
-    - 校验电表ID、区域、地区和住宅类型
-    - 将注册信息持久化到 Redis
-    依赖项：
-      - app_config: 提供区域、地区、住宅类型的配置校验
-      - redis_service: 管理用户数据的存储
-    """
+    """创建用户注册接口蓝图"""
     bp = Blueprint('user_register', __name__)
-
-    def _validate_region_area(region: str, area: str) -> bool:
-        """校验区域和地区是否匹配配置"""
-        return region in app_config.region_area_mapping and \
-               area in app_config.region_area_mapping[region]
-
-    def _validate_dwelling_type(dwelling_type: str) -> bool:
-        """校验住宅类型是否合法"""
-        return dwelling_type in app_config.dwelling_type_set
 
     @bp.route('/api/user/register', methods=['POST'])
     def register_user():
-        """用户注册接口"""
+        """处理用户注册请求"""
         try:
             data = request.get_json()
             if not data:
@@ -51,17 +35,17 @@ def create_user_register_blueprint(app_config: AppConfig, redis_service: RedisSe
 
             # 检查电表是否已注册
             if redis_service.is_meter_registered(meter_id):
-                return jsonify({'status': 'error', 'message': 'MeterID already registered'}), 409  # 409 Conflict
+                return jsonify({'status': 'error', 'message': 'MeterID already registered'}), 409
 
             # 校验区域和地区
-            if not _validate_region_area(region, area):
+            if region not in app_config.region_area_mapping or area not in app_config.region_area_mapping[region]:
                 return jsonify({'status': 'error', 'message': 'Invalid region-area combination'}), 400
 
             # 校验住宅类型
-            if not _validate_dwelling_type(dwelling_type):
+            if dwelling_type not in app_config.dwelling_type_set:
                 return jsonify({'status': 'error', 'message': 'Invalid dwelling type'}), 400
 
-            # 创建用户对象
+            # 创建用户对象并持久化
             user = User(meter_id, region, area, dwelling_type)
             with redis_service.client.pipeline() as pipe:
                 pipe.multi()  # 开启事务

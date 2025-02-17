@@ -14,4 +14,9 @@ class MaintenanceState:
 
     def is_maintenance(self):
         """检查当前是否处于维护状态"""
-        return self.redis.exists("maintenance_mode") == 1
+        try:
+            return self.redis.exists("maintenance_mode") == 1
+        except redis.exceptions.RedisError as e:
+            # 记录错误并默认返回非维护状态
+            print(f"Redis error: {str(e)}")
+            return False
