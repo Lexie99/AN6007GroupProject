@@ -6,6 +6,9 @@ from datetime import datetime
 from services.state import MaintenanceState
 from services.validation import validate_meter_id, validate_timestamp
 
+# 添加批量记录数限制
+MAX_BULK_RECORDS = 1000
+
 def create_meter_reading_blueprint(redis_service):
     """创建电表读数上报接口蓝图，支持单条和批量上报"""
     bp = Blueprint('meter_reading_api', __name__)
@@ -88,6 +91,8 @@ def create_meter_reading_blueprint(redis_service):
             readings = request.get_json()
             if not isinstance(readings, list):
                 return jsonify({'status': 'error', 'message': 'Input must be a JSON list'}), 400
+            if len(readings) > MAX_BULK_RECORDS:
+                return jsonify({'status': 'error', 'message': 'Exceed max bulk records limit'}), 400
 
             success_count = 0
             fail_count = 0
