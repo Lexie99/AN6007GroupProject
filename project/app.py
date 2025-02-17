@@ -10,6 +10,7 @@ from api.meter_reading import create_meter_reading_blueprint
 from api.user_query import create_user_query_blueprint
 from api.daily_jobs import create_daily_jobs_blueprint
 from api.logs_backup import create_logs_backup_blueprint
+from api.monthly_billing import create_billing_blueprint
 
 # Dash front-end
 from dash_app.query import create_query_app
@@ -32,6 +33,7 @@ def create_app():
     app.register_blueprint(create_user_query_blueprint(redis_service))
     app.register_blueprint(create_daily_jobs_blueprint(redis_service))
     app.register_blueprint(create_logs_backup_blueprint(redis_service))
+    app.register_blueprint(create_billing_blueprint(redis_service))
     
     # 启动后台worker
     start_background_worker(redis_service)

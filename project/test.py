@@ -14,6 +14,7 @@ USER_QUERY_URL  = f"{BASE_URL}/api/user/query"
 STOPSERVER_URL  = f"{BASE_URL}/stopserver"
 BACKUP_URL      = f"{BASE_URL}/get_backup"
 LOGS_URL        = f"{BASE_URL}/get_logs"
+BILLING_URL     = f"{BASE_URL}/api/billing"  # 新增：月度账单API
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
@@ -146,6 +147,17 @@ def get_logs(log_type="daily_jobs", limit=5, date=None):
     resp = requests.get(LOGS_URL, params=params)
     return resp.json()
 
+def get_billing(meter_id, month):
+    """
+    Test the monthly billing API.
+    Parameters:
+      - meter_id: 9-digit meter identifier.
+      - month: Month string in the format "YYYY-MM" (e.g., "2025-02").
+    """
+    params = {"meter_id": meter_id, "month": month}
+    resp = requests.get(BILLING_URL, params=params)
+    return resp.json()
+
 if __name__ == "__main__":
     print("===== Test Script Start =====")
 
@@ -207,5 +219,12 @@ if __name__ == "__main__":
 
     print("[Test] Viewing logs (daily_jobs):")
     print(get_logs("daily_jobs", 5))
+
+    # 新增：测试月度账单 API
+    print("[Test] Testing monthly billing API...")
+    test_month = "2025-02"
+    for mid in TEST_METER_IDS[:3]:
+        billing_result = get_billing(mid, test_month)
+        print(f"  billing for {mid} in month {test_month} =>", billing_result)
 
     print("===== Test Script Finished =====")
