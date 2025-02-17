@@ -161,8 +161,8 @@ if __name__ == "__main__":
 
     print("[Test] 批量发送多个时间戳的电表读数...")
     # 使用自定义起始时间，从 custom_start 开始，每隔1分钟发送一条，共发送5条
-    for mid in TEST_METER_IDS[:3]:  # 这里只选前三个电表作为示例
-        responses = send_multiple_meter_readings(mid, start_time="2025-02-13T11:30:00", count=5, interval_seconds=60)
+    for mid in TEST_METER_IDS[:]:  # 这里只选前三个电表作为示例
+        responses = send_multiple_meter_readings(mid, start_time="2025-02-16T11:30:00", count=5, interval_seconds=60)
         for ts, resp in responses:
             print(f"  meter {mid} @ {ts} =>", resp)
         time.sleep(0.5)
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         print(f"  {mid} 1d =>", r1d)
 
     print("[Test] 查看昨日备份:")
-    print(get_backup())
+    print(get_backup(date="2025-02-16"))
 
     print("[Test] 查看日志(daily_jobs):")
     print(get_logs("daily_jobs", 5))

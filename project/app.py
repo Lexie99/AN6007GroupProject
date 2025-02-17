@@ -33,7 +33,7 @@ def create_app():
     app.register_blueprint(create_daily_jobs_blueprint(redis_service))
     app.register_blueprint(create_logs_backup_blueprint(redis_service))
     
-    # 启动后台worker (如需测试队列式读数, 否则可注释)
+    # 启动后台worker
     start_background_worker(redis_service)
 
     # 初始化Dash

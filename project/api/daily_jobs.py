@@ -47,7 +47,7 @@ def create_daily_jobs_blueprint(redis_service):
 def run_maintenance(redis_service, maint_state):
     """执行维护任务（数据备份、清理、处理待定数据）"""
     try:
-        redis_service.log_event("daily_jobs", "🚧 Entering Maintenance Mode...")
+        redis_service.log_event("daily_jobs", "Entering Maintenance Mode...")
         
         # 1. 备份昨日数据
         process_daily_meter_readings(redis_service)
@@ -62,7 +62,7 @@ def run_maintenance(redis_service, maint_state):
         process_pending_data(redis_service)
     finally:
         maint_state.exit_maintenance()  # 确保退出维护状态（异常安全）
-        redis_service.log_event("daily_jobs", "✅ Maintenance Done.")
+        redis_service.log_event("daily_jobs", "Maintenance Done.")
 
 def process_daily_meter_readings(redis_service):
     """计算并备份昨日总用电量"""
@@ -90,11 +90,11 @@ def process_daily_meter_readings(redis_service):
         redis_service.store_backup_usage(str(yesterday), meter_id, total_consumption)
         total_processed += 1
 
-    redis_service.log_event("daily_jobs", f"📊 Backup {total_processed} meter reading data for yesterday")
+    redis_service.log_event("daily_jobs", f"Backup {total_processed} meter reading data for yesterday")
 
 def clean_old_data(redis_service, keep_days):
     total_deleted = redis_service.remove_old_history(keep_days)
-    redis_service.log_event("daily_jobs", f"🗑️ Deleted {total_deleted} old records older than {keep_days} days.")
+    redis_service.log_event("daily_jobs", f"Deleted {total_deleted} old records older than {keep_days} days.")
 
 def process_pending_data(redis_service):
     """将维护期间的暂存数据转移到历史记录"""
@@ -111,4 +111,4 @@ def process_pending_data(redis_service):
         count = redis_service.move_pending_to_history(meter_id)
         if count > 0:
             total_meters += 1
-    redis_service.log_event("daily_jobs", f"✅ Processed pending data for {total_meters} meter(s).")
+    redis_service.log_event("daily_jobs", f"Processed pending data for {total_meters} meter(s).")
