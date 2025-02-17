@@ -3,14 +3,14 @@
 import json
 from flask import request, jsonify, Blueprint
 from datetime import datetime, timedelta
-from services.validation import validate_meter_id  # 导入校验函数
+from services.validation import validate_meter_id  # Import validation function
 
 def create_user_query_blueprint(redis_service):
-    """创建用户查询接口蓝图，支持按不同时间范围查询电表数据"""
+    """Create a user query API blueprint that supports querying meter data for different time ranges."""
     bp = Blueprint('user_query', __name__)
 
     def _parse_records(records):
-        """解析并排序 Redis 记录，返回 (datetime, consumption) 列表"""
+        """Parse and sort Redis records, returning a list of tuples (datetime, consumption)."""
         parsed = []
         for raw in records:
             try:
@@ -25,7 +25,7 @@ def create_user_query_blueprint(redis_service):
         return parsed
 
     def _aggregate_daily(increments):
-        """按天聚合数据"""
+        """Aggregate data on a daily basis."""
         daily_map = {}
         for dt, cons in increments:
             day_str = dt.strftime("%Y-%m-%d")
@@ -36,7 +36,7 @@ def create_user_query_blueprint(redis_service):
         ]
 
     def _aggregate_monthly(increments):
-        """按月聚合数据"""
+        """Aggregate data on a monthly basis."""
         monthly_map = {}
         for dt, cons in increments:
             ym_str = dt.strftime("%Y-%m")
@@ -48,13 +48,13 @@ def create_user_query_blueprint(redis_service):
 
     @bp.route('/api/user/query', methods=['GET'])
     def api_query():
-        """处理电表数据查询请求"""
+        """Handle meter data query requests."""
         try:
-            # --- 参数校验 ---
+            # --- Parameter validation ---
             meter_id = request.args.get('meter_id')
             period = request.args.get('period')
 
-            # 校验 Meter ID 格式和注册状态
+            # Validate meter_id format and registration status
             if not meter_id:
                 return jsonify({'status': 'error', 'message': 'Missing meter_id'}), 400
             if not validate_meter_id(meter_id):
@@ -62,54 +62,41 @@ def create_user_query_blueprint(redis_service):
             if not redis_service.is_meter_registered(meter_id):
                 return jsonify({'status': 'error', 'message': 'MeterID not registered'}), 400
             
-            # 校验 Period 有效性
+            # Validate period
             valid_periods = ["30m", "1d", "1w", "1m", "1y"]
             if period not in valid_periods:
                 return jsonify({'status': 'error', 'message': 'Invalid period'}), 400
 
-            # --- 数据查询 ---
-            now = datetime.utcnow()  # 使用 UTC 时间
+            now = datetime.utcnow()  # Use UTC time
             history_key = f"meter:{meter_id}:history"
 
-            # 30分钟增量查询
             if period == "30m":
-                lower_bound = (now - timedelta(minutes=30)).timestamp()
-                upper_bound = now.timestamp()
-                records = redis_service.client.zrangebyscore(
-                    history_key, lower_bound, upper_bound
-                )
+                # Instead of filtering by current time, simply return the most recent record.
+                records = redis_service.client.zrevrange(history_key, 0, 0)
                 if not records:
                     return jsonify({'status': 'success', 'data': []}), 200
-                
-                total = sum(
-                    float(json.loads(rec).get("consumption", 0) for rec in records
-                ))
+                last_record = json.loads(records[0])
+                latest_increment = float(last_record.get("consumption", 0))
                 return jsonify({
                     'status': 'success',
                     'meter_id': meter_id,
-                    'total_usage': total,
-                    'data': [{"time": json.loads(rec)["timestamp"] for rec in records}]
+                    'latest_increment': latest_increment,
+                    'data': [{"time": last_record["timestamp"]}]
                 })
 
-            # --- 长期范围查询（1d/1w/1m/1y）---
-            # 计算时间范围
-            period_days = {
-                "1d": 1, "1w": 7, "1m": 30, "1y": 365
-            }[period]
+            # --- Long-term range query (1d/1w/1m/1y) ---
+            period_days = {"1d": 1, "1w": 7, "1m": 30, "1y": 365}[period]
             start_time = now - timedelta(days=period_days)
             
-            # 获取原始数据
             records = redis_service.get_meter_readings_by_score(
                 meter_id, start_time.timestamp(), now.timestamp()
             )
             if not records:
                 return jsonify({'status': 'success', 'data': []}), 200
             
-            # 解析并聚合数据
             increments = _parse_records(records)
             total_usage = sum(cons for _, cons in increments)
 
-            # 按不同周期返回聚合结果
             if period == "1d":
                 data = [{"time": ts.isoformat(), "consumption": cons} for ts, cons in increments]
             elif period in ["1w", "1m"]:

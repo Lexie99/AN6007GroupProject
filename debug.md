@@ -1,5 +1,4 @@
 **1. To do:**
-    测试（除API外所有）
     讲解
     录demo
     
@@ -35,7 +34,22 @@ e. Generative AI consultations Logs:
     Please note that if you are not able to complete the entire assignment, you are still required to share your assignment journey as it is graded separately from the final outcome. Each of you are required to take part in the presentation, with appropriate presentation materials or illustrations. You are advised NOT to read out from scripts while presenting.
 
 **4. possible improvements：**
-    1.目前的日志和备份仅用作记录，暂时没有restore的功能（因为restore的逻辑太复杂了）
-    2.没有做永久化存储，redis重启则memory消失，可能需要结合Redis的持久化配置（如RDB快照和AOF日志）
-    3.没有做到完全的前后端分离，dash.register中，为了用户注册时area下拉项能够根据选择的region自动更新，引入了AppConfig
-    4.对于电表读数异常没有太多检验机制，eg：同一时间戳重复数据，电量消费异常，读数缺失
+    1.日志与备份的恢复支持
+        目前系统的日志和备份功能仅用于记录和追踪操作，但并没有实现数据恢复功能。
+        由于恢复逻辑较为复杂，未来可以考虑设计一个自动或半自动的恢复流程，使系统在服务器重启或故障后，能够从备份日志中还原关键数据，保证业务连续性。
+    2.持久化存储方案的完善
+        当前 Redis 作为内存数据库，在重启后数据会丢失。
+        为了避免这种情况，应结合 Redis 的持久化配置，比如 RDB 快照和 AOF 日志，使数据在重启后能恢复到最新状态，确保数据的安全性和可靠性。
+    3.前后端分离的进一步优化
+        在 dash.register 前端模块中，为了实现区域下拉选项根据所选 region 自动更新，我们在前端中直接引入了 AppConfig。
+        这种做法在一定程度上违背了前后端完全分离的原则。未来可以将这些配置信息通过 API 提供给前端，前端只负责展示数据和交互逻辑，从而实现真正的前后端分离。
+    4.电表读数数据异常的检测与校验机制
+        目前对于电表上报的数据，系统尚未实现充分的异常检测，比如：
+            同一时间戳的重复数据；
+            异常的电量消费（例如突然出现过大的增量）；
+            读数缺失等情况。
+        未来可以加强数据校验逻辑，对每条上报数据进行更严格的检查，并设计相应的异常处理和报警机制，确保数据的准确性和完整性。
+    5.月度数据聚合模块的设计与集成
+        当前后台 Worker 和维护任务仅实现了实时数据的处理和每日数据的备份，并未单独实现月度数据聚合。
+        未来可以新增一个独立模块（例如 billing.py 或 monthly_aggregation.py），负责定时从每日备份数据中提取信息，并按照月份聚合生成总用电量数据，这部分数据可以直接用于电费账单生成和结算。
+        该模块可以在每日维护任务结束后自动调用，将聚合结果存储到专用的 Redis 键中，便于后续查询和账单处理。
