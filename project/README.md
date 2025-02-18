@@ -146,6 +146,8 @@ Requests==2.32.3
      - `/api/user/query`  
      - `/stopserver` (维护模式)  
      - `/get_backup`, `/get_logs` 等。
+     - `/monthly_billing`
+
 
 6. **测试脚本**  
    ```bash
@@ -170,11 +172,12 @@ Requests==2.32.3
    位于 `services/background_worker.py`，通过守护线程从 Redis 队列中批量处理数据，写入电表历史记录。支持维护模式下的 pending 数据处理与每日备份。
 
 5. **API 模块 (Flask Blueprints)**  
-   - `user_register_api.py`: `/api/user/register` 接口，负责用户注册及数据存储。  
-   - `meter_reading_api.py`: `/meter/reading` 接口，上报电表读数；已更新验证逻辑，确保时间戳格式正确。  
-   - `user_query_api.py`: `/api/user/query` 接口，支持查询 30 分钟增量及固定区间用电量。  
-   - `daily_jobs_api.py`: `/stopserver` 接口，用于触发维护模式、执行数据备份与 pending 数据处理。  
-   - `logs_backup_api.py`: `/get_logs`、`/get_backup` 接口，便于查看日志和备份数据。
+   - `user_register.py`: `/api/user/register` 接口，负责用户注册及数据存储。  
+   - `meter_reading.py`: `/meter/reading` 接口，上报电表读数；已更新验证逻辑，确保时间戳格式正确。  
+   - `user_query.py`: `/api/user/query` 接口，支持查询 30 分钟增量及固定区间用电量。  
+   - `daily_jobs.py`: `/stopserver` 接口，用于触发维护模式、执行数据备份与 pending 数据处理。  
+   - `logs_backup.py`: `/get_logs`、`/get_backup` 接口，便于查看日志和备份数据。
+   - `monthly_billing.py`: 接口，用于查询电表月度用量
 
 6. **Dash 前端**  
    - `dash_register.py`: 地址：`/register/`，提供用户注册表单，直接与后端 `/api/user/register` 交互。  
