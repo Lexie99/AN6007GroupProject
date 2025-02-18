@@ -2,6 +2,11 @@ import re
 from flask import Blueprint, request, jsonify
 from services.validation import validate_meter_id  # 如有必要，可加入其他校验函数
 
+# 测试的时候访问API需要带meter_id和month参数，如：
+# http://127.0.0.1:8050/api/billing?meter_id=100000001&month=2025-02
+# 请根据需要修改API的参数和返回值,否则取不到数据
+
+
 def create_billing_blueprint(redis_service):
     bp = Blueprint('billing_api', __name__)
 
