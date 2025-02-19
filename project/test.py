@@ -149,7 +149,7 @@ if __name__ == "__main__":
     last_readings = {}
 
     # 注册所有电表
-    print("[Test] Registering 100 meter IDs:")
+    print("[Test] Registering 10 meter IDs:")
     for mid in TEST_METER_IDS:
         res = register_meter(mid)
         print(f"  Meter {mid} registration: {res.get('message', res)}")
@@ -185,8 +185,8 @@ if __name__ == "__main__":
     # 模拟当天的备份和日志
     simulate_backup_and_logs(test_day)
     
-    print("\n[Test] Waiting 20 seconds to allow background worker to finish processing remaining data...")
-    time.sleep(20)
+    print("\n[Test] Waiting 5 seconds to allow background worker to finish processing remaining data...")
+    time.sleep(5)
     
     # 查询3 个电表的 30m（模拟“30分钟”）数据和 1d数据
     print("\n[Test] Querying usage data (30-minute & 1-day) for 3 meters:")
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         result = send_bulk_meter_readings(bulk_data)
         print(f"  Meter {mid} bulk upload during maintenance: {result}")
     
-    MAINTENANCE_WAIT = 30
+    MAINTENANCE_WAIT = 60
     print(f"\n[Test] Waiting {MAINTENANCE_WAIT} seconds for maintenance mode to complete...")
     time.sleep(MAINTENANCE_WAIT + 5)
     
