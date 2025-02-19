@@ -1,6 +1,6 @@
 **1. To do:**
     录demo
-    （清除redis当前数据库数据命令行：redis-cli FLUSHDB）
+    （清除redis当前数据库数据命令行：）redis-cli FLUSHDB
 
 **2. 准备相应的documents：**
 A documentation (or documents) containing:

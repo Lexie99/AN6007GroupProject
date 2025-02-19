@@ -107,14 +107,12 @@ def create_user_query_blueprint(redis_service):
             total_usage = sum(cons for _, cons in increments)
 
             if period == "1d":
-                # 对于1d查询，返回聚合后的总用电量和详细的每半小时数据。
-                # 聚合部分：
+                # 对于1d查询，返回聚合后的总用电量和详细的每半小时数据
                 aggregation = {
                     "consumption": round(total_usage, 2),
                     "start_time": start_time.isoformat(),
                     "end_time": now.isoformat()
                 }
-                # 详细数据：对每条记录格式化时间到分钟，消费值保留两位小数
                 detail = [{
                     "time": dt.strftime("%Y-%m-%d %H:%M"),
                     "consumption": round(cons, 2)

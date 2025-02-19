@@ -61,11 +61,11 @@ def create_query_app(flask_server):
         [Input("get_usage", "n_clicks")],
         [State("meter_id", "value"), State("period", "value")]
     )
+    
     def update_usage(n_clicks, meter_id, period):
         """Update the meter usage data."""
         if not meter_id or not meter_id.isdigit() or len(meter_id) != 9:
             return [], {}, "Invalid Meter ID (must be 9-digit)!"
-
         try:
             params = {"meter_id": meter_id, "period": period}
             resp = requests.get(QUERY_ENDPOINT, params=params)
@@ -77,77 +77,90 @@ def create_query_app(flask_server):
             return [], {}, f"Request error: {e}"
         except Exception as e:
             return [], {}, f"Exception: {str(e)}"
+        
+        # 检查返回数据中是否包含 data 字段，且不为空
+        if "data" not in result or not result["data"]:
+            return [], {}, "No usage data available."
 
-        # Process returned data.
-        if "data" in result:
-            data_list = result["data"]
-            if not data_list:
-                return [], {}, "No usage data available"
-            
-            if period == "30m":
-                # For 30-minute query, use the timestamp from the latest record.
-                inc = float(result.get("latest_increment", 0))
-                inc_str = f"{inc:.2f}"
-                timestamp_value = data_list[0].get("time", "Unknown timestamp")
+        data_field = result["data"]
+
+        if period == "30m":
+            # 30m 查询要求 data_field 为非空列表
+            if not isinstance(data_field, list) or len(data_field) == 0:
+                return [], {}, "No usage data available for the last 30 minutes."
+            timestamp_value = data_field[0].get("time", "Unknown timestamp")
+            try:
                 timestamp_formatted = pd.to_datetime(timestamp_value).strftime("%Y-%m-%d %H:%M")
-                table_data = [{"date": timestamp_formatted, "consumption": inc_str}]
-                fig = {
-                    "data": [{"x": [timestamp_formatted], "y": [inc], "type": "bar"}],
-                    "layout": {"title": "Latest Increment in Last 30 Minutes"}
-                }
-                return table_data, fig, ""
-            
-            elif period == "1d":
-                # For 1-day query, backend returns a dict with "aggregation" and "detail"
-                agg = data_list.get("aggregation") if isinstance(data_list, dict) else data_list[0]
-                detail = data_list.get("detail") if isinstance(data_list, dict) else data_list
-                total = float(agg.get("consumption", 0))
-                total_str = f"{total:.2f}"
-                # Format start_time and end_time to minutes
-                start_time_fmt = pd.to_datetime(agg.get("start_time", "")).strftime("%Y-%m-%d %H:%M") if agg.get("start_time") else "Unknown"
-                end_time_fmt = pd.to_datetime(agg.get("end_time", "")).strftime("%Y-%m-%d %H:%M") if agg.get("end_time") else "Unknown"
-                table_data = [{
-                    "date": f"{start_time_fmt} to {end_time_fmt}",
-                    "consumption": total_str
-                }]
-                # Construct bar chart from detail (each half-hour record)
-                df = pd.DataFrame(detail)
-                # Format the time column to minutes
-                df["time"] = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d %H:%M")
-                fig = {
-                    "data": [{"x": df["time"], "y": df["consumption"].astype(float), "type": "bar"}],
-                    "layout": {"title": f"Past 24 Hour Usage (Total: {total_str} kWh)"}
-                }
-                return table_data, fig, ""
-            
-            elif period in ["1w", "1m"]:
-                df = pd.DataFrame(data_list)
-                if df.empty:
-                    return [], {}, "No usage data available"
-                # 日期已经为 YYYY-MM-DD 格式
-                df["consumption"] = df["consumption"].apply(lambda x: f"{float(x):.2f}")
-                fig = {
-                    "data": [{"x": df["date"], "y": df["consumption"].astype(float), "type": "bar"}],
-                    "layout": {"title": f"Daily Usage (Total: {float(result.get('total_usage', 0)):.2f} kWh)"}
-                }
-                table_data = [{"date": row["date"], "consumption": row["consumption"]} for _, row in df.iterrows()]
-                return table_data, fig, ""
-            
-            elif period == "1y":
-                df = pd.DataFrame(data_list)
-                if df.empty:
-                    return [], {}, "No usage data available"
-                df["consumption"] = df["consumption"].apply(lambda x: f"{float(x):.2f}")
-                fig = {
-                    "data": [{"x": df["month"], "y": df["consumption"].astype(float), "type": "bar"}],
-                    "layout": {"title": f"Monthly Usage (Total: {float(result.get('total_usage', 0)):.2f} kWh)"}
-                }
-                table_data = [{"date": row["month"], "consumption": row["consumption"]} for _, row in df.iterrows()]
-                return table_data, fig, ""
-            
+            except Exception:
+                timestamp_formatted = timestamp_value
+            inc = float(result.get("latest_increment", 0))
+            inc_str = f"{inc:.2f}"
+            table_data = [{"date": timestamp_formatted, "consumption": inc_str}]
+            fig = {"data": [], "layout": {"title": "Latest Increment in Last 30 Minutes"}}
+            return table_data, fig, ""
+
+        elif period == "1d":
+            # 1d 查询可能返回字典或列表
+            if isinstance(data_field, dict):
+                agg = data_field.get("aggregation", {})
+                detail = data_field.get("detail", [])
             else:
-                return [], {}, "Unsupported data format."
+                if len(data_field) == 0:
+                    return [], {}, "No usage data available for 1 day period."
+                agg = data_field[0]
+                detail = data_field
+            total = float(agg.get("consumption", 0))
+            total_str = f"{total:.2f}"
+            try:
+                start_time_fmt = pd.to_datetime(agg.get("start_time", "")).strftime("%Y-%m-%d %H:%M") if agg.get("start_time") else "Unknown"
+            except Exception:
+                start_time_fmt = "Unknown"
+            try:
+                end_time_fmt = pd.to_datetime(agg.get("end_time", "")).strftime("%Y-%m-%d %H:%M") if agg.get("end_time") else "Unknown"
+            except Exception:
+                end_time_fmt = "Unknown"
+            table_data = [{
+                "date": f"{start_time_fmt} to {end_time_fmt}",
+                "consumption": total_str
+            }]
+            df = pd.DataFrame(detail)
+            if not df.empty and "time" in df.columns:
+                try:
+                    df["time"] = pd.to_datetime(df["time"]).dt.strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    pass
+            fig = {
+                "data": [{"x": df["time"], "y": df["consumption"].astype(float), "type": "bar"}] if not df.empty else [],
+                "layout": {"title": f"Past 24 Hour Usage (Total: {total_str} kWh)"}
+            }
+            return table_data, fig, ""
+
+        elif period in ["1w", "1m"]:
+            df = pd.DataFrame(data_field)
+            if df.empty:
+                return [], {}, "No usage data available"
+            df["consumption"] = df["consumption"].apply(lambda x: f"{float(x):.2f}")
+            fig = {
+                "data": [{"x": df["date"], "y": df["consumption"].astype(float), "type": "bar"}],
+                "layout": {"title": f"Daily Usage (Total: {float(result.get('total_usage', 0)):.2f} kWh)"}
+            }
+            table_data = [{"date": row["date"], "consumption": row["consumption"]} for _, row in df.iterrows()]
+            return table_data, fig, ""
+
+        elif period == "1y":
+            df = pd.DataFrame(data_field)
+            if df.empty:
+                return [], {}, "No usage data available"
+            df["consumption"] = df["consumption"].apply(lambda x: f"{float(x):.2f}")
+            fig = {
+                "data": [{"x": df["month"], "y": df["consumption"].astype(float), "type": "bar"}],
+                "layout": {"title": f"Monthly Usage (Total: {float(result.get('total_usage', 0)):.2f} kWh)"}
+            }
+            table_data = [{"date": row["month"], "consumption": row["consumption"]} for _, row in df.iterrows()]
+            return table_data, fig, ""
+
         else:
             return [], {}, "Unsupported data format."
+
 
     return query_app
