@@ -1,8 +1,6 @@
-# api/user_query_api.py
-
 import json
 from flask import request, jsonify, Blueprint
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from services.validation import validate_meter_id  # Import validation function
 
 def create_user_query_blueprint(redis_service):
@@ -10,22 +8,31 @@ def create_user_query_blueprint(redis_service):
     bp = Blueprint('user_query', __name__)
 
     def _parse_records(records):
-        """Parse and sort Redis records, returning a list of tuples (datetime, consumption)."""
+        """
+        Parse and sort Redis records, returning a list of tuples (datetime in UTC, consumption).
+        If the parsed time has no timezone info, assume local time and convert to UTC.
+        """
         parsed = []
         for raw in records:
             try:
                 rec = json.loads(raw)
                 dt = datetime.fromisoformat(rec["timestamp"])
+                if dt.tzinfo is None:
+                    dt = dt.astimezone()  # Attach local timezone info
+                dt_utc = dt.astimezone(timezone.utc)
                 cons = float(rec.get("consumption", 0))
-                parsed.append((dt, cons))
+                parsed.append((dt_utc, cons))
             except (KeyError, ValueError, json.JSONDecodeError) as e:
-                redis_service.log_event("query_error", 
+                redis_service.log_event("query_error",
                     f"Failed to parse record: {str(e)} | Raw: {raw[:100]}...")
         parsed.sort(key=lambda x: x[0])
         return parsed
 
     def _aggregate_daily(increments):
-        """Aggregate data on a daily basis."""
+        """
+        Aggregate the (UTC datetime, consumption) list by calendar day (UTC),
+        returning a list of dictionaries: [{"date": "YYYY-MM-DD", "consumption": total}, ...]
+        """
         daily_map = {}
         for dt, cons in increments:
             day_str = dt.strftime("%Y-%m-%d")
@@ -36,7 +43,10 @@ def create_user_query_blueprint(redis_service):
         ]
 
     def _aggregate_monthly(increments):
-        """Aggregate data on a monthly basis."""
+        """
+        Aggregate the (UTC datetime, consumption) list by calendar month (UTC),
+        returning a list of dictionaries: [{"month": "YYYY-MM", "consumption": total}, ...]
+        """
         monthly_map = {}
         for dt, cons in increments:
             ym_str = dt.strftime("%Y-%m")
@@ -54,24 +64,23 @@ def create_user_query_blueprint(redis_service):
             meter_id = request.args.get('meter_id')
             period = request.args.get('period')
 
-            # Validate meter_id format and registration status
             if not meter_id:
                 return jsonify({'status': 'error', 'message': 'Missing meter_id'}), 400
             if not validate_meter_id(meter_id):
                 return jsonify({'status': 'error', 'message': 'Invalid MeterID format'}), 400
             if not redis_service.is_meter_registered(meter_id):
                 return jsonify({'status': 'error', 'message': 'MeterID not registered'}), 400
-            
-            # Validate period
+
             valid_periods = ["30m", "1d", "1w", "1m", "1y"]
             if period not in valid_periods:
                 return jsonify({'status': 'error', 'message': 'Invalid period'}), 400
 
-            now = datetime.utcnow()  # Use UTC time
+            # 使用 UTC 时间作为查询参考时间
+            now = datetime.utcnow().replace(tzinfo=timezone.utc)
             history_key = f"meter:{meter_id}:history"
 
             if period == "30m":
-                # Instead of filtering by current time, simply return the most recent record.
+                # For 30-minute query, return the most recent record.
                 records = redis_service.client.zrevrange(history_key, 0, 0)
                 if not records:
                     return jsonify({'status': 'success', 'data': []}), 200
@@ -84,21 +93,36 @@ def create_user_query_blueprint(redis_service):
                     'data': [{"time": last_record["timestamp"]}]
                 })
 
-            # --- Long-term range query (1d/1w/1m/1y) ---
+            # --- Long-term range query for 1d/1w/1m/1y ---
             period_days = {"1d": 1, "1w": 7, "1m": 30, "1y": 365}[period]
             start_time = now - timedelta(days=period_days)
-            
+
             records = redis_service.get_meter_readings_by_score(
                 meter_id, start_time.timestamp(), now.timestamp()
             )
             if not records:
                 return jsonify({'status': 'success', 'data': []}), 200
-            
+
             increments = _parse_records(records)
             total_usage = sum(cons for _, cons in increments)
 
             if period == "1d":
-                data = [{"time": ts.isoformat(), "consumption": cons} for ts, cons in increments]
+                # 对于1d查询，返回聚合后的总用电量和详细的每半小时数据。
+                # 聚合部分：
+                aggregation = {
+                    "consumption": round(total_usage, 2),
+                    "start_time": start_time.isoformat(),
+                    "end_time": now.isoformat()
+                }
+                # 详细数据：对每条记录格式化时间到分钟，消费值保留两位小数
+                detail = [{
+                    "time": dt.strftime("%Y-%m-%d %H:%M"),
+                    "consumption": round(cons, 2)
+                } for dt, cons in increments]
+                data = {
+                    "aggregation": aggregation,
+                    "detail": detail
+                }
             elif period in ["1w", "1m"]:
                 data = _aggregate_daily(increments)
             elif period == "1y":
@@ -109,12 +133,12 @@ def create_user_query_blueprint(redis_service):
             return jsonify({
                 'status': 'success',
                 'meter_id': meter_id,
-                'total_usage': total_usage,
+                'total_usage': round(total_usage, 2),
                 'data': data
             })
 
         except Exception as e:
-            redis_service.log_event("query_error", 
+            redis_service.log_event("query_error",
                 f"Query failed: meter_id={meter_id}, period={period}, error={str(e)}")
             return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 

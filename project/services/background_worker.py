@@ -87,6 +87,14 @@ def process_batch(redis_service):
             reading_val = float(record["reading"])
             dt_obj = datetime.fromisoformat(ts_str)
             current_timestamp = dt_obj.timestamp()
+            
+            # 解析时间，并转换为 UTC 时间戳
+            from datetime import timezone
+            dt_obj = datetime.fromisoformat(ts_str)
+            if dt_obj.tzinfo is None:
+                dt_obj = dt_obj.astimezone()  # 假设上报的时间为本地时间
+            dt_obj_utc = dt_obj.astimezone(timezone.utc)
+            current_timestamp = dt_obj_utc.timestamp()
 
             # --- 计算用电量（当前读数减去上次读数） ---
             last_key = f"meter:{meter_id}:last_reading"

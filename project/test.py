@@ -3,48 +3,31 @@ import time
 import random
 import requests
 import redis
-import argparse
+import json
 from datetime import datetime, timedelta
 
 BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8050")
 
 REGISTER_URL    = f"{BASE_URL}/api/user/register"
-METER_READ_URL  = f"{BASE_URL}/meter/reading"
+BULK_READ_URL   = f"{BASE_URL}/meter/bulk_readings"
 USER_QUERY_URL  = f"{BASE_URL}/api/user/query"
 STOPSERVER_URL  = f"{BASE_URL}/stopserver"
 BACKUP_URL      = f"{BASE_URL}/get_backup"
 LOGS_URL        = f"{BASE_URL}/get_logs"
-BILLING_URL     = f"{BASE_URL}/api/billing"  # 新增：月度账单API
+BILLING_URL     = f"{BASE_URL}/api/billing"  # Monthly billing API
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-TEST_METER_IDS = [
-    "100000001", "100000002", "100000003", "100000004", "100000005",
-    "100000006", "100000007", "100000008", "100000009", "100000010",
-    "100000011", "100000012", "100000013", "100000014", "100000015",
-    "100000016", "100000017", "100000018", "100000019", "100000020"
-]
-READ_TIMES = 3
-MAINTENANCE_WAIT = 60  # Maintenance mode wait time in seconds
+# 生成 100 个测试电表ID：100000001 ~ 100000100
+TEST_METER_IDS = [str(100000000 + i) for i in range(1, 101)]
 
-# Global variable to store the last reading for each meter
+# 模拟数据上传间隔：30 分钟
+TIME_INTERVAL_SECONDS = 1800  # 1800 秒 = 30 分钟
+
+# 用于生成模拟数据时记录每个电表上一次读数的全局变量
 last_readings = {}
-
-def clear_test_data():
-    """
-    Delete Redis keys for all_users, meter:* and user_data:*
-    """
-    if r.exists("all_users"):
-        r.delete("all_users")
-    meter_keys = list(r.scan_iter("meter:*"))
-    for mk in meter_keys:
-        r.delete(mk)
-    user_keys = list(r.scan_iter("user_data:*"))
-    for uk in user_keys:
-        r.delete(uk)
-    # r.flushall()  # Use with caution, this deletes all data
 
 def register_meter(meter_id):
     payload = {
@@ -56,61 +39,28 @@ def register_meter(meter_id):
     resp = requests.post(REGISTER_URL, json=payload)
     return resp.json()
 
-def send_meter_reading(meter_id, timestamp=None):
+def prepare_bulk_readings_for_batch(meter_ids, batch_start_time):
     """
-    Send a meter reading. Each reading increases randomly based on the previous reading.
-    Parameters:
-      - meter_id: Meter identifier
-      - timestamp: Optional, specify the reporting time (accepts a datetime object or an ISO format string);
-                   if not provided, current time is used.
+    为一批电表生成一组读数数据，每条记录包含 meter_id, timestamp 和 reading。
     """
-    # Initialize or update the reading
-    if meter_id not in last_readings:
-        last_readings[meter_id] = round(random.uniform(100, 200), 2)
-    else:
-        # Increase from the previous reading by a random increment (between 0 and 10)
-        increment = round(random.uniform(0, 10), 2)
-        last_readings[meter_id] = round(last_readings[meter_id] + increment, 2)
-    reading = last_readings[meter_id]
+    batch_data = []
+    for meter_id in meter_ids:
+        if meter_id not in last_readings:
+            last_readings[meter_id] = round(random.uniform(100, 200), 2)
+        else:
+            increment = round(random.uniform(0, 10), 2)
+            last_readings[meter_id] = round(last_readings[meter_id] + increment, 2)
+        record = {
+            "meter_id": meter_id,
+            "timestamp": batch_start_time.isoformat(),
+            "reading": last_readings[meter_id]
+        }
+        batch_data.append(record)
+    return batch_data
 
-    # Set the timestamp; support custom time
-    if timestamp is None:
-        ts = datetime.now().isoformat()
-    else:
-        ts = timestamp.isoformat() if isinstance(timestamp, datetime) else timestamp
-
-    payload = {
-        "meter_id": meter_id,
-        "timestamp": ts,
-        "reading": reading
-    }
-    resp = requests.post(METER_READ_URL, json=payload)
+def send_bulk_meter_readings(readings):
+    resp = requests.post(BULK_READ_URL, json=readings)
     return resp.json()
-
-def send_multiple_meter_readings(meter_id, start_time, count=5, interval_seconds=600):
-    """
-    Batch send meter readings for the specified meter, starting from start_time,
-    with an interval of interval_seconds between each record.
-    If start_time is a string, it will be converted to a datetime object.
-    Returns a list of tuples (timestamp, API response).
-    """
-    from datetime import datetime, timedelta
-    
-    # If start_time is a string, convert it
-    if isinstance(start_time, str):
-        try:
-            start_time = datetime.fromisoformat(start_time)
-        except Exception as e:
-            raise ValueError(f"Invalid start_time format: {start_time}. Error: {e}")
-
-    responses = []
-    current_time = start_time
-    for i in range(count):
-        resp = send_meter_reading(meter_id, timestamp=current_time)
-        responses.append((current_time.isoformat(), resp))
-        current_time += timedelta(seconds=interval_seconds)
-        time.sleep(0.1)  # Simulate a short delay to avoid sending too quickly
-    return responses
 
 def query_meter(meter_id, period):
     params = {"meter_id": meter_id, "period": period}
@@ -122,11 +72,6 @@ def stop_server():
     return resp.json()
 
 def get_backup(date=None):
-    """
-    Retrieve backup data for the specified date.
-    Parameter:
-      - date: Optional, a date string in the format "YYYY-MM-DD". If not provided, the backend defaults (usually yesterday).
-    """
     params = {}
     if date:
         params["date"] = date
@@ -134,13 +79,6 @@ def get_backup(date=None):
     return resp.json()
 
 def get_logs(log_type="daily_jobs", limit=5, date=None):
-    """
-    Retrieve log data.
-    Parameters:
-      - log_type: Log type (default is "daily_jobs")
-      - limit: Limit the number of log entries returned
-      - date: Optional, a date string in the format "YYYY-MM-DD" (if the backend supports date filtering).
-    """
     params = {"log_type": log_type, "limit": limit}
     if date:
         params["date"] = date
@@ -148,83 +86,130 @@ def get_logs(log_type="daily_jobs", limit=5, date=None):
     return resp.json()
 
 def get_billing(meter_id, month):
-    """
-    Test the monthly billing API.
-    Parameters:
-      - meter_id: 9-digit meter identifier.
-      - month: Month string in the format "YYYY-MM" (e.g., "2025-02").
-    """
     params = {"meter_id": meter_id, "month": month}
     resp = requests.get(BILLING_URL, params=params)
     return resp.json()
 
+def simulate_backup_and_logs(date_obj):
+    """
+    模拟当天的备份数据和日志
+    - 备份数据存储在 Redis 键名:backup:meter_data:YYYY-MM-DD
+    - 日志存储在 Redis 列表键名:logs:daily_jobs
+    """
+    date_str = date_obj.strftime("%Y-%m-%d")
+    
+    # 模拟备份数据：每个电表对应一个随机的用电量（单位 kWh）
+    backup_data = {}
+    for meter_id in TEST_METER_IDS:
+        backup_data[meter_id] = round(random.uniform(5, 20), 2)
+    backup_key = f"backup:meter_data:{date_str}"
+    r.hset(backup_key, mapping=backup_data)
+    
+    # 模拟日志：生成 3 条日志记录，每条记录包含当天的时间戳
+    log_key = "logs:daily_jobs"
+    for i in range(3):
+        # 生成当天不同时间的日志，例如 10:00, 11:00, 12:00
+        log_timestamp = f"{date_str}T{10+i:02d}:00:00"
+        log_entry = json.dumps({
+            "timestamp": log_timestamp,
+            "log_type": "daily_jobs",
+            "message": f"Simulated log entry {i+1} for {date_str}",
+            "service": "BackupService"
+        })
+        r.rpush(log_key, log_entry)
+
+
 if __name__ == "__main__":
-    print("===== Test Script Start =====")
+    print("===== Test Script Start =====\n")
 
-    #print("[Test] Clearing old data...")
-    #clear_test_data()
-
-    print("[Test] Registering meter IDs...")
+    # 注册所有电表并打印注册结果
+    print("[Test] Registering 100 meter IDs:")
     for mid in TEST_METER_IDS:
         res = register_meter(mid)
-        print(f"  register {mid} =>", res)
+        print(f"  Meter {mid} registration: {res.get('message', res)}")
+    
+    # 模拟从 2025-02-01 到 2025-02-19，每天每隔半小时上传一次数据
+    start_date = datetime(2025, 2, 1)
+    end_date = datetime(2025, 2, 19)
+    interval_minutes = 30
+    batches_per_day = 24 * 60 // interval_minutes  # 每天 48 个批次
 
-    print("[Test] Batch sending meter readings with multiple timestamps...")
-    # Use a custom start time: starting from the custom start time, send one record per minute, for a total of 5 records.
-    for mid in TEST_METER_IDS[:]:
-        responses = send_multiple_meter_readings(mid, start_time="2025-02-16T11:30:00", count=5, interval_seconds=60)
-        for ts, resp in responses:
-            print(f"  meter {mid} @ {ts} =>", resp)
-        time.sleep(0.5)
+    current_date = start_date
+    print(f"\n[Test] Sending bulk readings for all 100 meters from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}:")
+    while current_date <= end_date:
+        # 每天从 00:00 开始
+        simulated_start = datetime(current_date.year, current_date.month, current_date.day, 0, 0, 0)
+        for batch in range(batches_per_day):
+            batch_time = simulated_start + timedelta(minutes=interval_minutes * batch)
+            bulk_data = prepare_bulk_readings_for_batch(TEST_METER_IDS, batch_time)
+            result = send_bulk_meter_readings(bulk_data)
+            print(f"  Date {current_date.strftime('%Y-%m-%d')} Batch {batch+1:02d} (timestamp: {batch_time.isoformat()}) bulk upload result: {result}")
+        # 模拟每天的备份数据和日志
+        simulate_backup_and_logs(current_date)
+        current_date += timedelta(days=1)
 
-    print("[Test] Querying 30-minute and 1-day data")
+    # 查询前3个电表的 30m 和 1d 数据
+    print("\n[Test] Querying usage data (30-minute & 1-day) for first 3 meters:")
     for mid in TEST_METER_IDS[:3]:
         r30 = query_meter(mid, "30m")
-        print(f"  {mid} 30m =>", r30)
         r1d = query_meter(mid, "1d")
-        print(f"  {mid} 1d =>", r1d)
+        print(f"  Meter {mid} 30m query: {r30}")
+        print(f"  Meter {mid} 1d query: {r1d}")
 
-    print("[Test] Testing maintenance mode effect...")
-    print("[Test] Calling stop_server to enter maintenance mode")
-    ret_maint = stop_server()
-    print("  stop_server =>", ret_maint)
+    # 测试 backup 和 log API
+    test_date = "2025-02-17"
+    print(f"\n[Test] Viewing backup data for date {test_date}:")
+    backup_result = get_backup(date=test_date)
+    print(f"  Backup data: {backup_result}")
+    print(f"\n[Test] Viewing logs (daily_jobs) for date {test_date}:")
+    logs_result = get_logs("daily_jobs", 100, date=test_date)
+    print(f"  Logs: {logs_result}")
 
-    # During maintenance mode, try sending meter readings to verify if they are queued in the pending queue.
-    print("[Test] Sending readings during maintenance mode...")
-    for mid in TEST_METER_IDS[:3]:
-        resp = send_meter_reading(mid)
-        print(f"  meter {mid} =>", resp)
-    # At the same time, query 30-minute data (pending data may not have been transferred to history yet)
-    for mid in TEST_METER_IDS[:3]:
-        r30 = query_meter(mid, "30m")
-        print(f"  (Maintenance mode) {mid} 30m =>", r30)
-
-    print(f"[Test] Waiting {MAINTENANCE_WAIT} seconds (maintenance mode duration)...")
-    time.sleep(MAINTENANCE_WAIT + 5)  # Wait a few extra seconds to ensure maintenance mode ends
-
-    print("[Test] Sending readings again after maintenance mode ends...")
-    for mid in TEST_METER_IDS[:3]:
-        resp = send_meter_reading(mid)
-        print(f"  meter {mid} =>", resp)
-
-    print("[Test] Querying 30-minute and 1-day data (after maintenance mode)")
-    for mid in TEST_METER_IDS[:3]:
-        r30 = query_meter(mid, "30m")
-        print(f"  {mid} 30m =>", r30)
-        r1d = query_meter(mid, "1d")
-        print(f"  {mid} 1d =>", r1d)
-
-    print("[Test] Viewing backup data for specified date:")
-    print(get_backup(date="2025-02-16"))
-
-    print("[Test] Viewing logs (daily_jobs):")
-    print(get_logs("daily_jobs", 5))
-
-    # 新增：测试月度账单 API
-    print("[Test] Testing monthly billing API...")
+    # 维护模式前测试月度账单 API
     test_month = "2025-02"
+    print(f"\n[Test] Testing monthly billing API BEFORE maintenance mode for month {test_month}:")
     for mid in TEST_METER_IDS[:3]:
         billing_result = get_billing(mid, test_month)
-        print(f"  billing for {mid} in month {test_month} =>", billing_result)
+        print(f"  Billing for Meter {mid} in {test_month}: {billing_result}")
 
-    print("===== Test Script Finished =====")
+    # 触发维护模式
+    print("\n[Test] Triggering maintenance mode by calling stop_server...")
+    maint_result = stop_server()
+    print(f"  stop_server response: {maint_result}")
+
+    # 在维护模式期间，通过 bulk 接口发送数据（仅测试前3个电表）
+    print("\n[Test] Sending bulk readings during maintenance mode for first 3 meters:")
+    maint_start = datetime(2025, 2, 19, 12, 0, 0)  # 示例时间
+    for mid in TEST_METER_IDS[:3]:
+        bulk_data = prepare_bulk_readings_for_batch([mid], maint_start)
+        result = send_bulk_meter_readings(bulk_data)
+        print(f"  Meter {mid} bulk upload during maintenance: {result}")
+
+    # 等待维护模式结束
+    MAINTENANCE_WAIT = 60  # 维护模式等待时间（秒）
+    print(f"\n[Test] Waiting {MAINTENANCE_WAIT} seconds for maintenance mode to complete...")
+    time.sleep(MAINTENANCE_WAIT + 5)
+
+    # 维护模式结束后查询前3个电表的 30m 和 1d 数据
+    print("[Test] Querying usage data (30-minute & 1-day) for first 3 meters AFTER maintenance mode:")
+    for mid in TEST_METER_IDS[:3]:
+        r30 = query_meter(mid, "30m")
+        r1d = query_meter(mid, "1d")
+        print(f"  Meter {mid} 30m query: {r30}")
+        print(f"  Meter {mid} 1d query: {r1d}")
+
+    # 维护模式后再次测试月度账单 API
+    print(f"\n[Test] Testing monthly billing API AFTER maintenance mode for month {test_month}:")
+    for mid in TEST_METER_IDS[:3]:
+        billing_result = get_billing(mid, test_month)
+        print(f"  Billing for Meter {mid} in {test_month}: {billing_result}")
+        
+    # 同时验证 backup 和 logs 数据在“重启”后仍然可用
+    print(f"\n[Test] Viewing backup data for date {test_date} after restart:")
+    backup_result = get_backup(date=test_date)
+    print(f"  Backup data: {backup_result}")
+    print(f"\n[Test] Viewing logs (daily_jobs) for date {test_date} after restart:")
+    logs_result = get_logs("daily_jobs", 100, date=test_date)
+    print(f"  Logs: {logs_result}")
+
+    print("\n===== Test Script Finished =====")
