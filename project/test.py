@@ -148,6 +148,10 @@ if __name__ == "__main__":
         simulate_backup_and_logs(current_date)
         current_date += timedelta(days=1)
 
+    # 增加等待时间，确保后台 worker 有足够时间处理队列数据并写入历史记录
+    print("\n[Test] Waiting 10 seconds to allow background worker to process data...")
+    time.sleep(20)
+
     # 查询前3个电表的 30m 和 1d 数据
     print("\n[Test] Querying usage data (30-minute & 1-day) for first 3 meters:")
     for mid in TEST_METER_IDS[:3]:
